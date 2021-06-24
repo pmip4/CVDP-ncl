@@ -285,8 +285,10 @@ begin
   
   if (vn.eq."TREFHT".or.vn.eq."TS") then      ; units check
      if (farr@units.eq."K".or.farr@units.eq."Kelvin".or.farr@units.eq."deg_k".or.farr@units.eq."deg_K") then   
+        if .not.all(ismissing(farr)) then
         if (max(farr).ge.100) then    ; data sets can be anomalies with units of K, so check for range before subtracting
            farr = farr-273.15
+        end if
         end if
         farr@units = "C"
      end if
@@ -363,7 +365,7 @@ function data_read_in_ocean_MOC(zpath:string,vn:string,yearS:integer,yearE:integ
 local zpath,vn,cpath0,ta,tfiles,c,arr,farr,yearS,yearE,mocheck,dimC,lev
 begin
   if (vn.eq."MOC") then
-     vname = (/"MOC","msftmyz","stfmmc","msftmz"/)
+     vname = (/"MOC","msftmyz","stfmmc","msftyz","msftmz"/)
   end if
 
   if (ismissing(zpath) ) then
@@ -375,6 +377,10 @@ begin
      emdata = 12
   else
      cpath0 = stringtochar(zpath)
+     ;disappointingly in CMIP6 the conventions for MOC do not seem as rigid (in basin ordering and dimension naming).
+     ; Hardwiring some according to model name - as detected within the zpath!!
+     ; Models inspected so far CMIP6_model_strs=(/"CESM2","FGOALS-f3-L","FGOALS-g3","GISS-E2-1-G","HadGEM3-GC31",\
+     ;                   "INM-CM4-8","IPSL-CM6A-LR","MPI-ESM1-2-LR","MRI-ESM2-0","NorESM2-LM","UKESM1"/)         
   
      ta = stringtochar("*")
      if (any(cpath0.eq.ta(0)).or.any(cpath0.eq."{")) then   ; check for "*" and "{" denoting multiple files
@@ -390,7 +396,28 @@ begin
                     arr = c[:]->$vname(ii)$(:,1,0,:,:)        ; select Atl+Med+Labrador+GIN sea+Arctic+Hudson Bay transport region and the only moc_comp dimension        
                  end if
               else                           ; CMIP file
-                 arr = c[:]->$vname(ii)$(:,0,:,:)             ; CMIP file: 0th basin/region = atlantic_ocean (CMIP3) or atlantic_arctic_ocean (CMIP5)         
+                 if .not.ismissing(str_match(zpath,"IPSL-CM6A-LR")) then 
+                    atl_ind=1
+                    ;IPSL is y,x with no named dimensions, and a duplicated latitude at the extreme north
+                    arr = c[:]->$vname(ii)$(:,atl_ind,:,0:330,0)
+                    if isfilevar(c[0],"nav_lat") then
+                    ;these extra lines are required to cope with IPSL-CM6A-LR's mstfyz files, which are a bit different
+                        arr!2 = "lat"
+                        arr&lat=c[0]->nav_lat(0:330,0)
+                    end if
+                 else
+                    if .not.ismissing(str_match(zpath,"MPI-ESM1")) then
+                       atl_ind=1
+                    else 
+                       atl_ind=0   ; CMIP file: 0th basin/region = atlantic_ocean (CMIP3) or atlantic_arctic_ocean (CMIP5)         
+                    end if
+                    arr = c[:]->$vname(ii)$(:,atl_ind,:,:)  
+                    if (vname(ii).eq."msftyz") then
+                       ;Reckon that we're roughly spherical below 65N
+                       ;Sampling Physical Ocean Fields in WCRP CMIP5 Simulations (Clivar WGOMD, Griffies et al, 2010)
+                       arr(:,:,{65:})=arr@_FillValue
+                    end if
+                 end if
               end if   
               delete(dimC)  
               break
@@ -419,7 +446,28 @@ begin
                     arr = c->$vname(i)$(:,1,0,:,:)        ; select Atl+Med+Labrador+GIN sea+Arctic+Hudson Bay transport region         
                  end if
               else                           ; CMIP file
-                 arr = c->$vname(i)$(:,0,:,:)             ; CMIP file: 0th basin/region = atlantic_ocean (CMIP3) or atlantic_arctic_ocean (CMIP5)         
+                 atl_ind=0 ; CMIP file: 0th basin/region = atlantic_ocean (CMIP3) or atlantic_arctic_ocean (CMIP5)
+                 ;if a CMIP6 model...
+                 if .not.ismissing(str_match(zpath,"IPSL-CM6A-LR")) then 
+                    atl_ind=1
+                    ;IPSL is y,x with no named dimensions, and a duplicated latitude at the extreme north
+                    arr = c->$vname(i)$(:,atl_ind,:,0:330,0)
+                    if isfilevar(c,"nav_lat") then
+                    ;these extra lines are required to cope with IPSL-CM6A-LR's mstfyz files, which are a bit different
+                        arr!2 = "lat"
+                        arr&lat=c->nav_lat(0:330,0)
+                    end if
+                 else
+                    if .not.ismissing(str_match(zpath,"MPI-ESM1")) then
+                       atl_ind=1 
+                    end if
+                    arr = c->$vname(i)$(:,atl_ind,:,:)             
+                    if (vname(i).eq."mstfyz") then
+                      ;Reckon that we're roughly spherical below 65N
+                      ;Sampling Physical Ocean Fields in WCRP CMIP5 Simulations (Clivar WGOMD, Griffies et al, 2010)
+                      arr(:,:,{65:})=arr@_FillValue
+                    end if
+                 end if
               end if   
               delete(dimC)                       
               break
@@ -606,10 +654,10 @@ function data_read_in_ice(zpath:string,vn:string,yearS:integer,yearE:integer)
 local zpath,vn,cpath0,ta,tfiles,c,arr,farr,yearS,yearE,mocheck,dimC,lev
 begin
   if (vn.eq."aice_nh") then
-     vname = (/"aice_nh","aice","sic","SIC","CN","ice","icec","siconc"/)
+     vname = (/"aice_nh","aice","sic","siconc","siconca","SIC","CN","ice","icec"/)
   end if
   if (vn.eq."aice_sh") then
-     vname = (/"aice_sh","aice","sic","SIC","CN","ice","icec","siconc"/)
+     vname = (/"aice_sh","aice","sic","siconc","siconca","SIC","CN","ice","icec"/)
   end if
 
   if (ismissing(zpath) ) then
@@ -650,8 +698,6 @@ begin
                     delete(dimZ)
                  end if
                  delete(strarr)
-;              else
-;                 print("2D coordinates for ice data are not detected")
               end if
               if (isatt(arr,"cell_measures").and.isfilevar(c[0],"tarea")) then    ; if an attribute named cell_measures exists, and tarea is on file(0)
                  if (arr@cell_measures.eq."area: tarea") then
@@ -667,32 +713,51 @@ begin
               else
                  arr = c[:]->$vname(ii)$
               end if
-              if (isatt(arr,"coordinates")) then
-                 strarr = str_split(arr@coordinates," ")
-                 if (any(strarr.eq."lon")) then      ; IPCC longitude 2D coordinate
-                    arr@lon2d = c[0]->lon
-                 end if
-                 if (any(strarr.eq."lat")) then      ; IPCC latitude 2D coordinate
-                    arr@lat2d = c[0]->lat
-                 end if
-                 if (any(strarr.eq."longitude")) then      ; NSIDC longitude 2D coordinate
-                    arr@lon2d = c[0]->longitude
-                 end if
-                 if (any(strarr.eq."latitude")) then      ; NSIDC latitude 2D coordinate
-                    arr@lat2d = c[0]->latitude
-                 end if
-                 delete(strarr)
-;              else
-;                 print("2D coordinates for ice data are not detected")
-              end if  
+
+              ;Start hunting for an areacello file...
+              ufile = new(1,string) ;establish a default (missing) path new to the areacello file
               dir_name = str_split(tfiles(0),"/")
+              ;first look in the same directory as the sea ice file
+              dir_name_test = "/"+str_join(dir_name(:dimsizes(dir_name)-2),"/")+"/areacello_*.nc"
+              ufile_test = systemfunc("ls "+dir_name_test+" 2> /dev/null")
+              if isfilepresent(ufile_test(0)) then
+                ufile=ufile_test(0)
+                 end if
+              delete(ufile_test)
+              ;then look for cmip5 files
+              if .not.ismissing(str_match(dir_name,"cmip5")) then
+                 dir_name_test = "/"+str_join(dir_name(:str_match_ind(dir_name,"cmip5")+3),"/")+"/{"+\
+                   dir_name(str_match_ind(dir_name,"cmip5")+4)+",piControl}/fx/ocean/fx/r0i0p0/*/areacello_*.nc"
+                 ufile_test = systemfunc("ls "+dir_name_test+" 2> /dev/null")
+                 if isfilepresent(ufile_test(0)) then
+                    ufile=ufile_test(0)
+                 end if
+                 delete(ufile_test)
+                 end if
+              ;then look for CMIP6 files
+              if .not.ismissing(str_match(dir_name,"CMIP6")) then
+                 CMIP6_text=str_match_ind(dir_name,"CMIP6")
+                 dir_name_test = "/"+str_join(dir_name(:CMIP6_text),"/")+"/{"+\
+                   dir_name(CMIP6_text+1)+",CMIP}/"+str_join(dir_name(CMIP6_text+2:CMIP6_text+3),"/")+\
+                   "/{"+str_join(dir_name(CMIP6_text+4:CMIP6_text+5),"/")+",piControl/r1i1p1f?}"+\
+                   "/Ofx/areacello/gn/*/areacello_*.nc"
+                 ufile_test = systemfunc("ls "+dir_name_test+" 2> /dev/null")
+                 if isfilepresent(ufile_test(0)) then
+                    ufile=ufile_test(0)
+                 end if
+                 delete(ufile_test)
+              end if  
+              ;finally keep original option
               if (dimsizes(dir_name).ge.8) then
-                 dir_name_new = "/"+str_join(dir_name(:4),"/")+"/fx/areacello/"+dir_name(7)+"/r0i0p0/*.nc"
-                 ufile = systemfunc("ls "+dir_name_new+" 2> /dev/null")   ; /dev/null suppresses all standard error output
-                 delete(dir_name_new)
-              else
-                 ufile = new(1,string)
+                 dir_name_test = "/"+str_join(dir_name(:4),"/")+"/{fx,Ofx}/areacello/"+dir_name(7)+"/r0i0p0/areacello_*.nc"
+                 ufile_test = systemfunc("ls "+dir_name_test+" 2> /dev/null")   ; /dev/null suppresses all standard error output
+                 if isfilepresent(ufile_test(0)) then
+                    ufile=ufile_test
               end if
+                 delete(ufile_test)
+              end if
+              delete(dir_name_test)
+
               if (.not.ismissing(ufile)) then
                  d = addfile(ufile,"r")
                  arr@area = totype(d->areacello,typeof(arr))
@@ -723,6 +788,70 @@ begin
                     end if
                  end if
                  delete(areaT)
+              end if
+
+              ;Read in some coordinates (from ufile if not in sea ice file itself)
+              if (isatt(arr,"coordinates")) then
+                 strarr = str_split(arr@coordinates," ")
+                 if (any(strarr.eq."lon")) then      ; IPCC longitude 2D coordinate
+                    if isfilevar(c[0],"lon") then
+                       arr@lon2d = c[0]->lon
+                    else 
+                       if isvar("d").and.isfilevar(d,"lon") then
+                          arr@lon2d = d->lon
+                       end if
+                    end if
+                 end if
+                 if (any(strarr.eq."lat")) then      ; IPCC latitude 2D coordinate
+                    if isfilevar(c[0],"lat") then
+                       arr@lat2d = c[0]->lat
+                    else 
+                       if isvar("d").and.isfilevar(d,"lat") then
+                          arr@lat2d = d->lat
+                       end if
+                    end if
+                 end if
+                 if (any(strarr.eq."nav_lon")) then      ; Alternate IPCC longitude 2D coordinate
+                    if isfilevar(c[0],"nav_lon") then
+                       arr@lon2d = c[0]->nav_lon
+                    else 
+                       if isvar("d").and.isfilevar(d,"nav_lon") then
+                          arr@lon2d = d->nav_lon
+                       end if
+                    end if
+                 end if
+                 if (any(strarr.eq."nav_lat")) then      ; Alternate IPCC latitude 2D coordinate
+                    if isfilevar(c[0],"nav_lat") then
+                       arr@lat2d = c[0]->nav_lat
+                    else 
+                       if isvar("d").and.isfilevar(d,"nav_lat") then
+                          arr@lat2d = d->nav_lat
+                       end if
+                    end if
+                 end if
+                 if (any(strarr.eq."longitude")) then      ; NSIDC longitude 2D coordinate
+                    if isfilevar(c[0],"longitude") then
+                       arr@lon2d = c[0]->longitude
+                    else 
+                       if isvar("d").and.isfilevar(d,"longitude") then
+                          arr@lon2d = d->longitude
+                       end if
+                    end if
+                 end if
+                 if (any(strarr.eq."latitude")) then      ; NSIDC latitude 2D coordinate
+                    if isfilevar(c[0],"latitude") then
+                    arr@lat2d = c[0]->latitude
+                    else 
+                       if isvar("d").and.isfilevar(d,"latitude") then
+                          arr@lat2d = d->latitude
+                       end if
+                    end if
+                 end if
+                 delete(strarr)
+              end if  
+
+              if isvar("d") then
+                 delete(d)
               end if
               delete([/dir_name,ufile/]) 
            end if   
@@ -955,13 +1084,9 @@ begin
         end if
      else                              ; relative years specified for climatological period
         if ((endyear(gg)-startyear(gg)+1).lt.(climo_endyear-climo_startyear+1)) then
-           print("check_custom_climo: Warning! Beginning and/or ending of climatological period is outside time range of data.")
+           print("check_custom_climo: Warning! There are fewer than "+(climo_endyear-climo_startyear+1)+" years of data.")
            print("Dataset: "+mn+", years = "+startyear(gg)+":"+endyear(gg)+", set climatological period = "+(endyear(gg)+climo_startyear)+":"+(endyear(gg)+climo_endyear))
-           print("The diagnostics package will proceed, but one or more dataset(s) will not have the full climatological period removed and/or the package may fail with the following message: fatal:NclOneDValGetRangeIndex: start coordinate index out of range.")
-        end if
-        if (abs(climo_startyear).ge.(endyear(gg)-startyear+1)) then
-           print("check_custom_climo: Warning! Dataset: "+mn+", climatology start year "+(endyear(gg)+climo_startyear)+" is outside of analysis time period ("+startyear(gg)+":"+endyear(gg)+"), exiting script.")
-           exit
+           print("The diagnostics package will proceed, but one or more dataset(s) will use all available data ("+(endyear(gg)-startyear(gg)+1)+" rather than "+(climo_endyear-climo_startyear+1)+" years). The package may fail with the following message: fatal:NclOneDValGetRangeIndex: start coordinate index out of range.")
         end if
      end if
   end do
@@ -1135,11 +1260,14 @@ begin
   if (isatt(zarr,"wgt_areaave_op_ncl")) then
      delete(zarr@wgt_areaave_op_ncl)
   end if
+  if (isatt(zarr,"valid_range")) then
+     delete(zarr@valid_range)
+  end if
+  if (isatt(zarr,"actual_range")) then
+     delete(zarr@actual_range)
+  end if
 
   if (isatt(zarr,"_FillValue")) then      ; set missing_value = _FillValue
-     if (isatt(zarr,"missing_value")) then
-        delete(zarr@missing_value)
-     end if
      zarr@missing_value = zarr@_FillValue
   end if
   
@@ -1167,4 +1295,3 @@ begin
 
   return(zarr)
 end
-
