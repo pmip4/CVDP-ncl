@@ -206,6 +206,7 @@ begin
      delete(d)  
 
      if (OPT_CLIMO.eq."Full") then
+        climo = clmMonTLL(sst)
         sst = rmMonAnnCycTLL(sst)
      else
         check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
@@ -219,7 +220,6 @@ begin
         end if   
         delete(temp_arr)
         sst   = calcMonAnomTLL(sst,climo) 
-        delete(climo)
      end if
      
      coswgt=cos(rad*sst&lat)
@@ -230,6 +230,7 @@ begin
      llonw = 190.
      llone = 240.
      nino34 = wgt_areaave_Wrap(sst(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     nino34@AnnCycle = wgt_areaave_Wrap(climo(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
      nino34@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
      nino34@units = sst@units
      nino34@long_name = "nino3.4 timeseries (monthly)"       
@@ -239,6 +240,7 @@ begin
      llonw = 210.
      llone = 270.
      nino3 = wgt_areaave(sst(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     nino3@AnnCycle = wgt_areaave_Wrap(climo(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
      nino3@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
      copy_VarCoords(nino34,nino3)
      nino3@units = sst@units
@@ -249,6 +251,7 @@ begin
      llonw = 160.
      llone = 210.
      nino4 = wgt_areaave(sst(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     nino4@AnnCycle = wgt_areaave_Wrap(climo(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
      nino4@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
      copy_VarCoords(nino34,nino4)
      nino4@units = sst@units
@@ -259,17 +262,23 @@ begin
      llonw = 270.
      llone = 280.
      nino12 = wgt_areaave(sst(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     nino12@AnnCycle = wgt_areaave_Wrap(climo(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
      nino12@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
      copy_VarCoords(nino34,nino12)
      nino12@units = sst@units
      nino12@long_name = "nino1+2 timeseries (monthly)"       
 
-     ssttemp = lonFlip(sst)   
+     ssttemp = lonFlip(sst)
+     climotemp=lonFlip(climo)   
      amm_n = wgt_areaave(ssttemp(:,{5.:15.},{-50.:-20.}),coswgt({5.:15.}),1.0,0)      ;  Atlantic Meridional Mode
      amm_s = wgt_areaave(ssttemp(:,{-15.:-5.},{-20.:10.}),coswgt({-15.:-5.}),1.0,0)
      amm = amm_n
      amm = (/ amm_n - amm_s /)
      delete([/amm_n,amm_s/])
+     amm_n_AnnCycle = wgt_areaave(climotemp(:,{5.:15.},{-50.:-20.}),coswgt({5.:15.}),1.0,0)      ;  Atlantic Meridional Mode
+     amm_s_AnnCycle = wgt_areaave(climotemp(:,{-15.:-5.},{-20.:10.}),coswgt({-15.:-5.}),1.0,0)
+     amm@AnnCycle = (/ amm_n_AnnCycle - amm_s_AnnCycle /)
+     delete([/amm_n_AnnCycle,amm_s_AnnCycle/])
      amm@comment_cvdp = "area average domain (-5:20N, 80W:0E) - (-10:5N, 60W:15E)"
      copy_VarCoords(nino34,amm)
      amm@units = sst@units
@@ -280,6 +289,7 @@ begin
      llonw = -20.
      llone = 0.
      atl3 = wgt_areaave(ssttemp(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     atl3@AnnCycle = wgt_areaave_Wrap(climotemp(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
      atl3@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
      copy_VarCoords(nino34,atl3)
      atl3@units = sst@units
@@ -290,17 +300,19 @@ begin
      llonw = -30.
      llone = 10.
      tsa = wgt_areaave(ssttemp(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     tsa@AnnCycle = wgt_areaave_Wrap(climotemp(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
      tsa@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
      copy_VarCoords(nino34,tsa)
      tsa@units = sst@units
      tsa@long_name = "Tropical Southern Atlantic SST timeseries (monthly)"       
-     delete(ssttemp)
+     delete([/ssttemp,climotemp/])
      
      llats = 5.5    ;  Tropical Northern Atlantic Index
      llatn = 23.5
      llonw = 302.5
      llone = 345.
      tna = wgt_areaave(sst(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     tna@AnnCycle = wgt_areaave_Wrap(climo(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
      tna@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
      copy_VarCoords(nino34,tna)
      tna@units = sst@units
@@ -311,6 +323,7 @@ begin
      llonw = 40.
      llone = 110.
      tio = wgt_areaave(sst(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     tio@AnnCycle = wgt_areaave_Wrap(climo(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
      tio@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
      copy_VarCoords(nino34,tio)
      tio@units = sst@units
@@ -318,16 +331,19 @@ begin
      
                      ; Indian Ocean Dipole Index http://www.bom.gov.au/climate/IOD/about_IOD.shtml
      iod = wgt_areaave(sst(:,{-10.:10.},{50.:70.}),coswgt({-10.:10.}),1.0,0) - wgt_areaave(sst(:,{-10.:0.},{90.:110.}),coswgt({-10.:0.}),1.0,0)  
+     iod@AnnCycle = wgt_areaave(climo(:,{-10.:10.},{50.:70.}),coswgt({-10.:10.}),1.0,0) - wgt_areaave(climo(:,{-10.:0.},{90.:110.}),coswgt({-10.:0.}),1.0,0)  
      iod@comment_cvdp = "area average domain (-10:10N, 50:70E) - (-10:0N, 90:110E)"
      copy_VarCoords(nino34,iod)
      iod@units = sst@units
      iod@long_name = "Indian Ocean Dipole Index (monthly)"       
 
      socn = wgt_areaave(sst(:,{-70.:-50.},:),coswgt({-70.:-50.}),1.0,0) 
+     socn@AnnCycle = wgt_areaave(climo(:,{-70.:-50.},:),coswgt({-70.:-50.}),1.0,0)  
      socn@comment_cvdp = "area average domain (-70:-50N, 0:360E)"
      copy_VarCoords(nino34,socn)
      socn@units = sst@units
-     socn@long_name = "Southern Ocean Index (monthly)"       
+     socn@long_name = "Southern Ocean Index (monthly)"  
+     delete(climo);remove the climatology: not needed anymore
 ;---------------------------------------------------------------------------------------------     
      if (OUTPUT_DATA.eq."True") then
         modname = str_sub_str(names(ee)," ","_")
@@ -377,9 +393,23 @@ begin
 ;---------------------------------------------------------------------------------------------
      nino34T = wgt_runave(nino34,wgt,1)     ; for use in ENSO composites / hovmuellers / running standard deviations
      nino34_ndj = nino34T(11:dimsizes(nino34T)-13:12)   ; cannot count last 1yr as spatial composite uses +1yrs data betond NDJ..  
+     ;CMB: Overwrite dec value with max anomaly from jun-may 
+     ;CMB: this should allow for shifts in the peak devation w.r.t. seasonal cycle
+     ;CMB: detrending monthly values rather than just ndj ones.
+     if .not.all(ismissing(nino34_ndj)) then
+       nino34dT = dtrend_msg(ispan(0,dimsizes(nino34T)-1,1),nino34T,True,False);CMB     do i=0,dimsizes(nino34_ndj)-1 ;CMB
+       do i=0,dimsizes(nino34_ndj)-1
+         this_yr=nino34dT(12*i+5:12*i+16) ;CMB
+         nino34_ndj(i)=this_yr(maxind(abs(this_yr))) ;CMB
+         delete(this_yr) ;CMB
+       end do ;CMB
+       delete(nino34dT)
+     end if
      nino34_ndj!0 = "time"
      nino34_ndj&time = ispan(syear(ee),eyear(ee)-1,1)    
-     nino34_ndj = dtrend_msg(ispan(0,dimsizes(nino34_ndj&time)-1,1),nino34_ndj,True,False)
+     ;CMB:moved earlier, otherwise max won't work
+     ;nino34_ndj = dtrend_msg(ispan(0,dimsizes(nino34_ndj&time)-1,1),nino34_ndj,True,False)
+     nino34_ndj@composite_threshold=(/dim_stddev(nino34_ndj)/);CMB added this metadata for later...
      nino34_ndj = dim_standardize(nino34_ndj,0)
 
      sst = (/ dtrend_msg_n(ispan(0,nyr(ee)*12-1,1),sst,False,False,0) /) ; detrend the sst array
@@ -440,8 +470,8 @@ begin
         hov_hi&time_mon1 = time_mon1
         longitude = finsst_hi&lon
         longitude@standard_name = "longitude"
-        hov_hi!1 = "longitude"
-        hov_hi&longitude = longitude
+        hov_hi!1 = "hov_lon"
+        hov_hi&hov_lon = longitude
         delete([/time_mon1,longitude/])
         hov_lo = (/ finsst_lo(24:52,:) /)  ; 24:52 runs from Jan+0->May+2 and matches range shown in plot
         copy_VarCoords(hov_hi,hov_lo)
@@ -542,19 +572,32 @@ begin
            locntr = 0
            hiyr = new(dimsizes(nino34_ndj&time),integer)
            loyr = hiyr
+           composited_avg_ampl=new(1,typeof(nino34_ndj))
+           composited_avg_ampl=(/0/)
+           composited_elnino_avg_ampl=new(1,typeof(nino34_ndj))
+           composited_elnino_avg_ampl=(/0/)
+           composited_lanina_avg_ampl=new(1,typeof(nino34_ndj))
+           composited_lanina_avg_ampl=(/0/)
 
            do hh = 0,dimsizes(nino34_ndj)-1
               if (.not.ismissing(nino34_ndj(hh))) then
                  if (nino34_ndj(hh).ge.1) then
                     hiyr(hicntr) = nino34_ndj&time(hh)
                     hicntr = hicntr+1
+                    composited_elnino_avg_ampl=composited_elnino_avg_ampl+abs(nino34_ndj(hh))
+                    composited_avg_ampl=composited_avg_ampl+abs(nino34_ndj(hh))
                  end if
                  if (nino34_ndj(hh).le.-1) then
                     loyr(locntr) = nino34_ndj&time(hh)
                     locntr = locntr+1
+                    composited_lanina_avg_ampl=composited_lanina_avg_ampl+abs(nino34_ndj(hh))
+                    composited_avg_ampl=composited_avg_ampl+abs(nino34_ndj(hh))
                  end if
-              end if
+               end if
            end do
+           composited_avg_ampl=composited_avg_ampl/(hicntr+locntr)
+           composited_elnino_avg_ampl=composited_elnino_avg_ampl/hicntr
+           composited_lanina_avg_ampl=composited_lanina_avg_ampl/locntr
  
            if (hicntr.eq.0) then     ; for simulations with climatological SSTs
               highyr = hiyr(0)
@@ -568,7 +611,8 @@ begin
               lowyr = loyr(:locntr-1)
            end if
            delete([/loyr,locntr/])
-        
+           ;print("High Years are: "+str_join(tostring(highyr),","));CMB
+           ;print("Low Years are: "+str_join(tostring(lowyr),","));CMB
            dimS = dimsizes(psl&time)    ; change time from YYYYMM->YYYY.frac
            tmin = psl&time(0)/100
            tmax = psl&time(dimS-1)/100
@@ -600,6 +644,24 @@ begin
            sc_sst_lo = sc_sst_lo@_FillValue
            sc_psl_hi = sc_psl_hi@_FillValue
            sc_psl_lo = sc_psl_lo@_FillValue
+           sc_tas_hi@composite_threshold=nino34_ndj@composite_threshold
+           sc_tas_lo@composite_threshold=nino34_ndj@composite_threshold
+           sc_sst_hi@composite_threshold=nino34_ndj@composite_threshold
+           sc_sst_lo@composite_threshold=nino34_ndj@composite_threshold
+           sc_psl_hi@composite_threshold=nino34_ndj@composite_threshold
+           sc_psl_lo@composite_threshold=nino34_ndj@composite_threshold
+           sc_tas_hi@composited_avg_ampl=composited_avg_ampl
+           sc_tas_lo@composited_avg_ampl=composited_avg_ampl
+           sc_sst_hi@composited_avg_ampl=composited_avg_ampl
+           sc_sst_lo@composited_avg_ampl=composited_avg_ampl
+           sc_psl_hi@composited_avg_ampl=composited_avg_ampl
+           sc_psl_lo@composited_avg_ampl=composited_avg_ampl
+           sc_tas_hi@composited_elnino_avg_ampl=composited_elnino_avg_ampl
+           sc_tas_lo@composited_lanina_avg_ampl=composited_lanina_avg_ampl
+           sc_sst_hi@composited_elnino_avg_ampl=composited_elnino_avg_ampl
+           sc_sst_lo@composited_lanina_avg_ampl=composited_lanina_avg_ampl
+           sc_psl_hi@composited_elnino_avg_ampl=composited_elnino_avg_ampl
+           sc_psl_lo@composited_lanina_avg_ampl=composited_lanina_avg_ampl
            
            if (dimsizes(highyr).le.1) then
               print("For "+names(ee)+", 1 or less (normalized) nino3.4 value greater than one standard deviation found, setting nino3.4 spatial composites to missing")  ; sc_*_hi arrays left to _FillValue
@@ -632,7 +694,6 @@ begin
            n34sc_sst = (/ sc_sst_hi - sc_sst_lo /)
            n34sc_tas = sc_tas_hi
            n34sc_tas = (/ sc_tas_hi - sc_tas_lo /)
-           delete([/sc_psl_hi,sc_psl_lo,sc_sst_hi,sc_sst_lo,sc_tas_hi,sc_tas_lo/])
            delete(sst&time)
            sst&time = TIME    
            delete(TIME)       
@@ -644,6 +705,14 @@ begin
               z->nino34_spacomp_sst_son0 = set_varAtts(n34sc_sst(9,:,:),"nino3.4 sst spatial composite (SON+0)","","")
               z->nino34_spacomp_sst_djf1 = set_varAtts(n34sc_sst(12,:,:),"nino3.4 sst spatial composite (DJF+1)","","")
               z->nino34_spacomp_sst_mam1 = set_varAtts(n34sc_sst(15,:,:),"nino3.4 sst spatial composite (MAM+1)","","")
+              z->nino34_spacomp_elnino_sst_jja0 = set_varAtts(sc_sst_hi(6,:,:),"El Nino sst spatial composite (JJA+0)","","")
+              z->nino34_spacomp_elnino_sst_son0 = set_varAtts(sc_sst_hi(9,:,:),"El Nino sst spatial composite (SON+0)","","")
+              z->nino34_spacomp_elnino_sst_djf1 = set_varAtts(sc_sst_hi(12,:,:),"El Nino sst spatial composite (DJF+1)","","")
+              z->nino34_spacomp_elnino_sst_mam1 = set_varAtts(sc_sst_hi(15,:,:),"El Nino sst spatial composite (MAM+1)","","")
+              z->nino34_spacomp_lanina_sst_jja0 = set_varAtts(sc_sst_lo(6,:,:),"La Nina sst spatial composite (JJA+0)","","")
+              z->nino34_spacomp_lanina_sst_son0 = set_varAtts(sc_sst_lo(9,:,:),"La Nina sst spatial composite (SON+0)","","")
+              z->nino34_spacomp_lanina_sst_djf1 = set_varAtts(sc_sst_lo(12,:,:),"La Nina sst spatial composite (DJF+1)","","")
+              z->nino34_spacomp_lanina_sst_mam1 = set_varAtts(sc_sst_lo(15,:,:),"La Nina sst spatial composite (MAM+1)","","")
 
               modname = str_sub_str(names_trefht(ee)," ","_")
               bc = (/"/","'","(",")"/)
@@ -671,6 +740,14 @@ begin
               z_tas->nino34_spacomp_tas_son0 = set_varAtts(n34sc_tas(9,:,:),"nino3.4 tas spatial composite (SON+0)","","") 
               z_tas->nino34_spacomp_tas_djf1 = set_varAtts(n34sc_tas(12,:,:),"nino3.4 tas spatial composite (DJF+1)","","") 
               z_tas->nino34_spacomp_tas_mam1 = set_varAtts(n34sc_tas(15,:,:),"nino3.4 tas spatial composite (MAM+1)","","") 
+              z_tas->nino34_spacomp_elnino_tas_jja0 = set_varAtts(sc_tas_hi(6,:,:),"El Nino tas spatial composite (JJA+0)","","")
+              z_tas->nino34_spacomp_elnino_tas_son0 = set_varAtts(sc_tas_hi(9,:,:),"El Nino tas spatial composite (SON+0)","","")
+              z_tas->nino34_spacomp_elnino_tas_djf1 = set_varAtts(sc_tas_hi(12,:,:),"El Nino tas spatial composite (DJF+1)","","")
+              z_tas->nino34_spacomp_elnino_tas_mam1 = set_varAtts(sc_tas_hi(15,:,:),"El Nino tas spatial composite (MAM+1)","","")
+              z_tas->nino34_spacomp_lanina_tas_jja0 = set_varAtts(sc_tas_lo(6,:,:),"La Nina tas spatial composite (JJA+0)","","")
+              z_tas->nino34_spacomp_lanina_tas_son0 = set_varAtts(sc_tas_lo(9,:,:),"La Nina tas spatial composite (SON+0)","","")
+              z_tas->nino34_spacomp_lanina_tas_djf1 = set_varAtts(sc_tas_lo(12,:,:),"La Nina tas spatial composite (DJF+1)","","")
+              z_tas->nino34_spacomp_lanina_tas_mam1 = set_varAtts(sc_tas_lo(15,:,:),"La Nina tas spatial composite (MAM+1)","","")
               delete(z_tas)
               delete(modname)
               
@@ -701,9 +778,18 @@ begin
               z_psl->nino34_spacomp_psl_son0 = set_varAtts(n34sc_psl(9,:,:),"nino3.4 psl spatial composite (SON+0)","","")   
               z_psl->nino34_spacomp_psl_djf1 = set_varAtts(n34sc_psl(12,:,:),"nino3.4 psl spatial composite (DJF+1)","","")   
               z_psl->nino34_spacomp_psl_mam1 = set_varAtts(n34sc_psl(15,:,:),"nino3.4 psl spatial composite (MAM+1)","","")   
+              z_psl->nino34_spacomp_elnino_psl_jja0 = set_varAtts(sc_psl_hi(6,:,:),"El Nino psl spatial composite (JJA+0)","","")
+              z_psl->nino34_spacomp_elnino_psl_son0 = set_varAtts(sc_psl_hi(9,:,:),"El Nino psl spatial composite (SON+0)","","")
+              z_psl->nino34_spacomp_elnino_psl_djf1 = set_varAtts(sc_psl_hi(12,:,:),"El Nino psl spatial composite (DJF+1)","","")
+              z_psl->nino34_spacomp_elnino_psl_mam1 = set_varAtts(sc_psl_hi(15,:,:),"El Nino psl spatial composite (MAM+1)","","")
+              z_psl->nino34_spacomp_lanina_psl_jja0 = set_varAtts(sc_psl_lo(6,:,:),"La Nina psl spatial composite (JJA+0)","","")
+              z_psl->nino34_spacomp_lanina_psl_son0 = set_varAtts(sc_psl_lo(9,:,:),"La Nina psl spatial composite (SON+0)","","")
+              z_psl->nino34_spacomp_lanina_psl_djf1 = set_varAtts(sc_psl_lo(12,:,:),"La Nina psl spatial composite (DJF+1)","","")
+              z_psl->nino34_spacomp_lanina_psl_mam1 = set_varAtts(sc_psl_lo(15,:,:),"La Nina psl spatial composite (MAM+1)","","")
               delete(z_psl)
               delete(modname)
            end if
+           delete([/sc_psl_hi,sc_psl_lo,sc_sst_hi,sc_sst_lo,sc_tas_hi,sc_tas_lo/])
         end if
      end if
      if (isvar("TIME")) then
@@ -778,19 +864,32 @@ begin
            locntr = 0
            hiyr = new(dimsizes(nino34_ndj&time),integer)
            loyr = hiyr
+           composited_avg_ampl=new(1,typeof(nino34_ndj))
+           composited_avg_ampl=(/0/)
+           composited_elnino_avg_ampl=new(1,typeof(nino34_ndj))
+           composited_elnino_avg_ampl=(/0/)
+           composited_lanina_avg_ampl=new(1,typeof(nino34_ndj))
+           composited_lanina_avg_ampl=(/0/)
 
            do hh = 0,dimsizes(nino34_ndj)-1
               if (.not.ismissing(nino34_ndj(hh))) then
                  if (nino34_ndj(hh).ge.1) then
                     hiyr(hicntr) = nino34_ndj&time(hh)
                     hicntr = hicntr+1
+                    composited_elnino_avg_ampl=composited_elnino_avg_ampl+abs(nino34_ndj(hh))
+                    composited_avg_ampl=composited_avg_ampl+abs(nino34_ndj(hh))
                  end if
                  if (nino34_ndj(hh).le.-1) then
                     loyr(locntr) = nino34_ndj&time(hh)
                     locntr = locntr+1
+                    composited_lanina_avg_ampl=composited_lanina_avg_ampl+abs(nino34_ndj(hh))
+                    composited_avg_ampl=composited_avg_ampl+abs(nino34_ndj(hh))
                  end if
-              end if
+               end if
            end do
+           composited_avg_ampl=composited_avg_ampl/(hicntr+locntr)
+           composited_elnino_avg_ampl=composited_elnino_avg_ampl/hicntr
+           composited_lanina_avg_ampl=composited_lanina_avg_ampl/locntr
  
            if (hicntr.eq.0) then     ; for simulations with climatological SSTs
               highyr = hiyr(0)
@@ -817,7 +916,13 @@ begin
         
            sc_ppt_hi = sc_ppt_hi@_FillValue
            sc_ppt_lo = sc_ppt_lo@_FillValue
-           
+           sc_ppt_hi@composite_threshold = nino34_ndj@composite_threshold
+           sc_ppt_lo@composite_threshold = nino34_ndj@composite_threshold
+           sc_ppt_hi@composited_avg_ampl=composited_avg_ampl
+           sc_ppt_lo@composited_avg_ampl=composited_avg_ampl
+           sc_ppt_hi@composited_elnino_avg_ampl=composited_elnino_avg_ampl
+           sc_ppt_lo@composited_lanina_avg_ampl=composited_lanina_avg_ampl
+
            if (dimsizes(highyr).le.1) then
               print("For "+names(ee)+", 1 or less (normalized) nino3.4 value greater than one standard deviation found, setting nino3.4 spatial composites to missing")  ; sc_*_hi arrays left to _FillValue
            else           
@@ -841,7 +946,6 @@ begin
            
            n34sc_ppt = sc_ppt_hi
            n34sc_ppt = (/ sc_ppt_hi - sc_ppt_lo /)
-           delete([/sc_ppt_hi,sc_ppt_lo/])     
                       
            if (OUTPUT_DATA.eq."True") then
               modname = str_sub_str(names_prect(ee)," ","_")
@@ -871,9 +975,18 @@ begin
               z_ppt->nino34_spacomp_pr_son0 = set_varAtts(n34sc_ppt(9,:,:),"nino3.4 pr spatial composite (SON+0)","","")
               z_ppt->nino34_spacomp_pr_djf1 = set_varAtts(n34sc_ppt(12,:,:),"nino3.4 pr spatial composite (DJF+1)","","")
               z_ppt->nino34_spacomp_pr_mam1 = set_varAtts(n34sc_ppt(15,:,:),"nino3.4 pr spatial composite (MAM+1)","","")
+              z_ppt->nino34_spacomp_elnino_pr_jja0 = set_varAtts(sc_ppt_hi(6,:,:),"El Nino pr spatial composite (JJA+0)","","")
+              z_ppt->nino34_spacomp_elnino_pr_son0 = set_varAtts(sc_ppt_hi(9,:,:),"El Nino pr spatial composite (SON+0)","","")
+              z_ppt->nino34_spacomp_elnino_pr_djf1 = set_varAtts(sc_ppt_hi(12,:,:),"El Nino pr spatial composite (DJF+1)","","")
+              z_ppt->nino34_spacomp_elnino_pr_mam1 = set_varAtts(sc_ppt_hi(15,:,:),"El Nino pr spatial composite (MAM+1)","","")
+              z_ppt->nino34_spacomp_lanina_pr_jja0 = set_varAtts(sc_ppt_lo(6,:,:),"La Nina pr spatial composite (JJA+0)","","")
+              z_ppt->nino34_spacomp_lanina_pr_son0 = set_varAtts(sc_ppt_lo(9,:,:),"La Nina pr spatial composite (SON+0)","","")
+              z_ppt->nino34_spacomp_lanina_pr_djf1 = set_varAtts(sc_ppt_lo(12,:,:),"La Nina pr spatial composite (DJF+1)","","")
+              z_ppt->nino34_spacomp_lanina_pr_mam1 = set_varAtts(sc_ppt_lo(15,:,:),"La Nina pr spatial composite (MAM+1)","","")
               delete(z_ppt)
               delete(modname)
            end if
+           delete([/sc_ppt_hi,sc_ppt_lo/])     
         end if
      end if
      if (isvar("TIME")) then
@@ -907,12 +1020,10 @@ begin
      val2 = .99
      pct = 0.1 
      spectra_mvf = False        ; missing value flag for nino3.4
+     spectra_mvf_obs = True    ; missing value flag for obs nino3.4
      if (any(ismissing(nino34))) then     ; check for missing data                                                            
         print("Missing data detected for "+names(ee)+", not creating spectra in sst.indices.ncl") 
         spectra_mvf = True
-        if (isfilepresent2("obs_ts").and.ee.eq.0) then
-           spectra_mvf_obs = True
-        end if
      else
         if (isfilepresent2("obs_ts").and.ee.eq.0) then
            spectra_mvf_obs = False   ; missing value flag for obs nino3.4
@@ -1075,15 +1186,15 @@ begin
      xyres2@gsnXYBarChart = False
 
      xyres2@xyLineColor = "royalblue"
-     xyres2@trYMinF = 0.15    ; hard wire YMinF and YMaxF for running stddev plots
-     xyres2@trYMaxF = 1.95       
+     xyres2@trYMinF = 0.3    ; hard wire YMinF and YMaxF for running stddev plots
+     xyres2@trYMaxF = 1.8       
      if (wks_type.eq."png") then
         xyres2@xyLineThicknessF = 3.5
      else
         xyres2@xyLineThicknessF = 1.75
      end if
      delete(xyres2@gsnYRefLine)
-     xyres2@gsnYRefLine = (/.3,.6,0.9,1.2,1.5,1.8/)
+     xyres2@gsnYRefLine = (/.6,0.9,1.2,1.5/)
      xyres2@gsnYRefLineColor = "gray85"
      
      xyres3 = xyres            ; resource list for monthly nino3.4 standard deviations
@@ -1729,9 +1840,9 @@ begin
   end do
   
   if (isvar("patcor_tas")) then    ; for pattern correlation table  
-     clat_tas = cos(0.01745329*patcor_tas&lat)
+     clat_sst = cos(0.01745329*patcor_tas&lat)
      clat_psl = cos(0.01745329*patcor_psl&lat)
-     finpr_tas = "ENSO TAS (DJF+1)  "    ; Must be 18 characters long
+     finpr_sst = "ENSO TAS (DJF+1)  "    ; Must be 18 characters long
      finpr_psl = "ENSO PSL (DJF+1)  " 
      line3   = "                  "    ; Must be 18 characters long
      line4   = line3
@@ -1759,14 +1870,14 @@ begin
         line3 = line3+" "+ntb   
         line4 = line4+" "+ntc 
         if (all(ismissing(patcor_tas(hh,:,:)))) then
-           finpr_tas = finpr_tas+sprintf(format2,9.99)+"/"+sprintf(format3,9.99)
+           finpr_sst = finpr_sst+sprintf(format2,9.99)+"/"+sprintf(format3,9.99)
         else
-           finpr_tas = finpr_tas+sprintf(format2,(pattern_cor(patcor_tas(0,:,:),patcor_tas(hh,:,:),clat_tas,0)))+"/"+sprintf(format3,(wgt_arearmse(patcor_tas(0,:,:),patcor_tas(hh,:,:),clat_tas,1.0,0)))
+           finpr_sst = finpr_sst+sprintf(format2,(pattern_cor(patcor_tas(0,:,:),patcor_tas(hh,:,:),clat_sst,0)))+"/"+sprintf(format3,(dim_rmsd(ndtooned(NewCosWeight(patcor_tas(0,:,:))),ndtooned(NewCosWeight(patcor_tas(hh,:,:))))))
         end if
         if (all(ismissing(patcor_psl(hh,:,:)))) then
            finpr_psl = finpr_psl+sprintf(format2,9.99)+"/"+sprintf(format3,9.99)
         else
-           finpr_psl = finpr_psl+sprintf(format2,(pattern_cor(patcor_psl(0,:,:),patcor_psl(hh,:,:),clat_psl,0)))+"/"+sprintf(format3,(wgt_arearmse(patcor_psl(0,:,:),patcor_psl(hh,:,:),clat_psl,1.0,0)))
+           finpr_psl = finpr_psl+sprintf(format2,(pattern_cor(patcor_psl(0,:,:),patcor_psl(hh,:,:),clat_psl,0)))+"/"+sprintf(format3,(dim_rmsd(ndtooned(NewCosWeight(patcor_psl(0,:,:))),ndtooned(NewCosWeight(patcor_psl(hh,:,:))))))
         end if
      end do
      if (dimsizes(tochar(line4)).ge.8190) then   ; system or fortran compiler limit
@@ -1775,10 +1886,10 @@ begin
         write_table(getenv("OUTDIR")+"metrics.sst.indices.1.txt","w",[/header/],"%s")
         write_table(getenv("OUTDIR")+"metrics.sst.indices.1.txt","a",[/line3/],"%s")
         write_table(getenv("OUTDIR")+"metrics.sst.indices.1.txt","a",[/line4/],"%s")
-        write_table(getenv("OUTDIR")+"metrics.sst.indices.1.txt","a",[/finpr_tas/],"%s")
+        write_table(getenv("OUTDIR")+"metrics.sst.indices.1.txt","a",[/finpr_sst/],"%s")
         write_table(getenv("OUTDIR")+"metrics.sst.indices.1.txt","a",[/finpr_psl/],"%s")
      end if  
-     delete([/finpr_tas,finpr_psl,line3,line4,format2,format3,nchar,ntc,clat_tas,clat_psl,patcor_tas,patcor_psl,dimY,ntb,header/])
+     delete([/finpr_sst,finpr_psl,line3,line4,format2,format3,nchar,ntc,clat_sst,clat_psl,patcor_tas,patcor_psl,dimY,ntb,header/])
   end if
 
   if (isvar("patcor_hov_hi")) then           ; for pattern correlation table  
@@ -1812,12 +1923,12 @@ begin
         if (all(ismissing(patcor_hov_hi(hh,24:52,:)))) then                ; 24:52 refers to Jan+0->May+2, which is the range shown in the hovmoller plots.
            finpr_hi = finpr_hi+sprintf(format2,9.99)+"/"+sprintf(format3,9.99)
         else
-           finpr_hi = finpr_hi+sprintf(format2,(pattern_cor(patcor_hov_hi(0,24:52,:),patcor_hov_hi(hh,24:52,:),1.0,0)))+"/"+sprintf(format3,(wgt_arearmse(patcor_hov_hi(0,24:52,:),patcor_hov_hi(hh,24:52,:),1.0,1.0,0)))
+           finpr_hi = finpr_hi+sprintf(format2,(pattern_cor(patcor_hov_hi(0,24:52,:),patcor_hov_hi(hh,24:52,:),1.0,0)))+"/"+sprintf(format3,(dim_rmsd(ndtooned(patcor_hov_hi(0,24:52,:)),ndtooned(patcor_hov_hi(hh,24:52,:)))))
         end if
         if (all(ismissing(patcor_hov_lo(hh,24:52,:)))) then
            finpr_lo = finpr_lo+sprintf(format2,9.99)+"/"+sprintf(format3,9.99)
         else
-           finpr_lo = finpr_lo+sprintf(format2,(pattern_cor(patcor_hov_lo(0,24:52,:),patcor_hov_lo(hh,24:52,:),1.0,0)))+"/"+sprintf(format3,(wgt_arearmse(patcor_hov_lo(0,24:52,:),patcor_hov_lo(hh,24:52,:),1.0,1.0,0)))
+           finpr_lo = finpr_lo+sprintf(format2,(pattern_cor(patcor_hov_lo(0,24:52,:),patcor_hov_lo(hh,24:52,:),1.0,0)))+"/"+sprintf(format3,(dim_rmsd(ndtooned(patcor_hov_lo(0,24:52,:)),ndtooned(patcor_hov_lo(hh,24:52,:)))))
         end if
      end do
      if (dimsizes(tochar(line4)).ge.8190) then   ; system or fortran compiler limit
@@ -1888,7 +1999,7 @@ begin
      gsn_panel2(wks_tio,xyiod,lp,panres)  
 
      panres@txString = "Atlantic Nin~H-13V2F35~D~FV-2H3F21~o3 (Monthly, "+title_socn+")"
-     gsn_panel2(wks_tio,xyatl3,lp,panres) 
+     gsn_panel2(wks_tio,xysocn,lp,panres) 
   end if
   delete(wks_tio) 
 

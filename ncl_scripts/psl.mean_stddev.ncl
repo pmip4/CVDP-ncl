@@ -105,14 +105,29 @@ begin
               temp_arr = pslT
               delete(temp_arr&time)
               temp_arr&time = cd_calendar(pslT&time,-1)
+              climo_nyrs=min((/CLIMO_EYEAR-CLIMO_SYEAR,dimsizes(temp_arr&time)/12-1/))
+              delete(pslT)
               if (CLIMO_SYEAR.lt.0) then
-                 climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+                 pslT = rmMonAnnCycTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
               else
-                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
-              end if                  
+                 pslT = rmMonAnnCycTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
+              end if
               delete(temp_arr)
-              pslT   = calcMonAnomTLL(pslT,climo) 
-              delete(climo)
+           end if
+        else
+           if (OPT_CLIMO.ne."Full") then
+              check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = pslT
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(pslT&time,-1)
+              climo_nyrs=min((/CLIMO_EYEAR-CLIMO_SYEAR,dimsizes(temp_arr&time)/12-1/))
+              delete(pslT)
+              if (CLIMO_SYEAR.lt.0) then
+                 pslT = temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:)       
+              else
+                 pslT = temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:)                 
+              end if
+              delete(temp_arr)
            end if
         end if        
         psl_seas = runave_n_Wrap(pslT,3,0,0)
@@ -129,11 +144,20 @@ begin
            psl_mean_ann = dim_avg_n_Wrap(psl_ann(5::12,:,:),0)
         end if
         if (ff.eq.1) then     
-           psl_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_seas(0::12,:,:),False,False,0),0)
-           psl_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_seas(3::12,:,:),False,False,0),0)
-           psl_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_seas(6::12,:,:),False,False,0),0)
-           psl_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_seas(9::12,:,:),False,False,0),0)
-           psl_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_ann(5::12,:,:),False,False,0),0)
+           if isvar("climo_nyrs") then
+             psl_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),psl_seas(0::12,:,:),False,False,0),0)
+             psl_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),psl_seas(3::12,:,:),False,False,0),0)
+             psl_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),psl_seas(6::12,:,:),False,False,0),0)
+             psl_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),psl_seas(9::12,:,:),False,False,0),0)
+             psl_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),psl_ann(5::12,:,:),False,False,0),0)
+             delete(climo_nyrs)   
+           else
+             psl_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_seas(0::12,:,:),False,False,0),0)
+             psl_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_seas(3::12,:,:),False,False,0),0)
+             psl_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_seas(6::12,:,:),False,False,0),0)
+             psl_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_seas(9::12,:,:),False,False,0),0)
+             psl_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),psl_ann(5::12,:,:),False,False,0),0)
+           end if
         end if
         delete([/psl_seas,psl_ann/])
      end do
@@ -170,10 +194,10 @@ begin
         end if
 
         z->psl_spatialmean_djf     = set_varAtts(psl_mean_djf,"psl mean (DJF)","","")
-        z->psl_spatialmean_mam     = set_varAtts(psl_mean_djf,"psl mean (MAM)","","")
-        z->psl_spatialmean_jja     = set_varAtts(psl_mean_djf,"psl mean (JJA)","","")
-        z->psl_spatialmean_son     = set_varAtts(psl_mean_djf,"psl mean (SON)","","")
-        z->psl_spatialmean_ann     = set_varAtts(psl_mean_djf,"psl mean (annual)","","")
+        z->psl_spatialmean_mam     = set_varAtts(psl_mean_mam,"psl mean (MAM)","","")
+        z->psl_spatialmean_jja     = set_varAtts(psl_mean_jja,"psl mean (JJA)","","")
+        z->psl_spatialmean_son     = set_varAtts(psl_mean_son,"psl mean (SON)","","")
+        z->psl_spatialmean_ann     = set_varAtts(psl_mean_ann,"psl mean (annual)","","")
         
         z->psl_spatialstddev_djf     = set_varAtts(psl_sd_djf,"psl standard deviation (DJF)","","")
         z->psl_spatialstddev_mam     = set_varAtts(psl_sd_mam,"psl standard deviation (MAM)","","")
@@ -298,7 +322,7 @@ begin
         if (all(ismissing(patcor(hh,:,:)))) then
            finpr = finpr+sprintf(format2,9.99)+"/"+sprintf(format3,9.99)
         else
-           finpr = finpr+sprintf(format2,(pattern_cor(patcor(0,:,:),patcor(hh,:,:),clat,0)))+"/"+sprintf(format3,(wgt_arearmse(patcor(0,:,:),patcor(hh,:,:),clat,1.0,0)))
+           finpr = finpr+sprintf(format2,(pattern_cor(patcor(0,:,:),patcor(hh,:,:),clat,0)))+"/"+sprintf(format3,(dim_rmsd(ndtooned(NewCosWeight(patcor(0,:,:))),ndtooned(NewCosWeight(patcor(hh,:,:))))))
         end if
      end do
      if (dimsizes(tochar(line4)).ge.8190) then   ; system or fortran compiler limit

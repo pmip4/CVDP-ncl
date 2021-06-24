@@ -62,16 +62,16 @@
                                            ; Example: modular_list = "amoc,amo,pr.trends_timeseries"
                                            ; For a list of available scripts see complete_list at line 72. 
 
-  machine_casesen = "True"  ; True = Your filesystem is case sensitive  (Default)
+  machine_casesen = "CMIP_ONLY"  ; True = Your filesystem is case sensitive  (Default)
                              ; False = Your filesystem is case insensitive                                                          
 ;========END USER MODIFICATIONS===========================================================
-  version = "5.1.1"
+  version = "5.1.PMIP"
 
   print("Starting: Climate Variability Diagnostics Package ("+systemfunc("date")+")")
 
   complete_list = "psl.nam_nao,psl.pna_npo,tas.trends_timeseries,snd.trends,psl.trends,amo,pdo,sst.indices,pr.trends_timeseries,"+\
                    "psl.sam_psa,sst.mean_stddev,psl.mean_stddev,pr.mean_stddev,sst.trends_timeseries,amoc,tas.mean_stddev,"+\
-                   "snd.mean_stddev,aice.mean_stddev,aice.trends_timeseries,ipo"
+                   "snd.mean_stddev,aice.mean_stddev,aice.trends_timeseries,ipo,iod,amm,atl3,pr.indices,tas.indices,monsoon"
 
   loadscript(zp+"functions.ncl")
   outfiles = (/"ts","trefht","psl","prect","snowdp","moc","maxnum","aice_nh","aice_sh"/)
@@ -96,7 +96,7 @@
   end if
 
   if (.not.isfilepresent2(outdir)) then
-     system("mkdir -p "+outdir)
+     system("mkdir "+outdir)
   end if
   envvar_str = "   export OUTDIR="+outdir+";   export OBS="+obs+";   export SCALE_TIMESERIES="+scale_timeseries+";   "+\
          "export OUTPUT_DATA="+output_data+";   export VERSION="+version+";   export PNG_SCALE="+png_scale+";   "+\
@@ -174,6 +174,7 @@
   end if
   
   system("cp "+zp+"cas-cvdp.png "+outdir)
+  system("cp "+zp+"banner.png "+outdir)
   system("cp namelist_byvar/* "+outdir)
   system("cp namelist "+outdir)
   if (obs.eq."True") then

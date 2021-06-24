@@ -154,100 +154,157 @@ begin
         if (isatt(aice_nh,"area")) then
            area3d = aice_nh@area
            area3d_c = conform(aice_nh,area3d,(/1,2/))
+           aice_nh_ext = aice_nh
+;           aice_nh_ext = (/ (where((aice_nh/100.).ge.0.15,(aice_nh/100.),aice_nh@_FillValue))*area3d_c /) ;   ice area calculation (all cells > 15% kept) 
+           aice_nh_ext = (/ where(aice_nh.ge.15,1.,aice_nh@_FillValue) /) ; ice extent calculation (all cells greater than 15% treated as 100% covered)
+           aice_nh_ext = aice_nh_ext*area3d_c
            aice_nh_sum = aice_nh
-;           aice_nh_sum = (/ (where((aice_nh/100.).ge.0.15,(aice_nh/100.),aice_nh@_FillValue))*area3d_c /) ;   ice area calculation (all cells > 15% kept) 
-           aice_nh_sum = (/ where(aice_nh.ge.15,1.,aice_nh@_FillValue) /) ; ice extent calculation (all cells greater than 15% treated as 100% covered)
-           aice_nh_sum = aice_nh_sum*area3d_c
-           wgts = aice_nh_sum(0,:,:)
+           aice_nh_sum = (/aice_nh*area3d_c*0.01/)
+           wgts = aice_nh_ext(0,:,:)
            wgts = 1.
+           aice_nh_ext_mon = aice_nh_ext(:,0,0)   ; preallocate array to retain metadata
+           aice_nh_ext_mon = (/ wgt_areasum2(aice_nh_ext,wgts,0) /)
            aice_nh_sum_mon = aice_nh_sum(:,0,0)   ; preallocate array to retain metadata
            aice_nh_sum_mon = (/ wgt_areasum2(aice_nh_sum,wgts,0) /)
 ;           do gg = 0,dimsizes(aice_nh&time)-1
-;              aice_nh_sum_mon(gg) = (/ sum(aice_nh_sum(gg,:,:)) /)
+;              aice_nh_ext_mon(gg) = (/ sum(aice_nh_ext(gg,:,:)) /)
 ;           end do
 
            if (isatt(aice_nh,"pole_hole_area")) then   ; special attribute set up to account for pole hole in grids. NSIDC assumes hole is 100% ice covered as of Jan 2016 
-              ph_area = todouble(aice_nh_sum_mon@pole_hole_area)  ; format: start YYYYMM, end YYYYMM, area, start YYYYMM, end YYYYMM, area, etc.
+              ph_area = todouble(aice_nh_ext_mon@pole_hole_area)  ; format: start YYYYMM, end YYYYMM, area, start YYYYMM, end YYYYMM, area, etc.
               dimZ_ph = dimsizes(ph_area)/3                       ; only used for Northern Hemisphere
-              temp_area_arr = aice_nh_sum_mon
-              temp_area_arr&time = cd_calendar(aice_nh_sum_mon&time,1)
+              temp_area_arr = aice_nh_ext_mon
+              temp_area_arr&time = cd_calendar(aice_nh_ext_mon&time,1)
+              temp2_area_arr = aice_nh_sum_mon
+              temp2_area_arr&time = cd_calendar(aice_nh_sum_mon&time,1)
 ;              printVarSummary(temp_area_arr)
 ;              print(ph_area)
               do gg = 0,dimZ_ph-1
                  temp_area_arr({ph_area(gg*3):ph_area(gg*3+1)}) = temp_area_arr({ph_area(gg*3):ph_area(gg*3+1)}) + tofloat(ph_area(gg*3+2))
+                 temp2_area_arr({ph_area(gg*3):ph_area(gg*3+1)}) = temp2_area_arr({ph_area(gg*3):ph_area(gg*3+1)}) + tofloat(ph_area(gg*3+2))
 ;                 print(ph_area(gg*3)+" "+ph_area(gg*3+1)+" "+tofloat(ph_area(gg*3+2)))
               end do
-              aice_nh_sum_mon = (/ temp_area_arr /)
-              delete([/ph_area,dimZ_ph,temp_area_arr/])
+              aice_nh_ext_mon = (/ temp_area_arr /)
+              aice_nh_sum_mon = (/ temp2_area_arr /)
+              delete([/ph_area,dimZ_ph,temp_area_arr,temp2_area_arr/])
               ph_s = "*"
            end if                
 
+           aice_nh_ext_mon = aice_nh_ext_mon/1.e12
+           aice_nh_ext_mon@units = "10^12 m2"
+           aice_nh_ext_mon@long_name = "sea_ice_extent"
            aice_nh_sum_mon = aice_nh_sum_mon/1.e12
            aice_nh_sum_mon@units = "10^12 m2"
-           aice_nh_sum_mon@long_name = "sea_ice_extent"
-           if (isatt(aice_nh_sum_mon,"coordinates")) then
+           aice_nh_sum_mon@long_name = "sea_ice_area"
+           if (isatt(aice_nh_ext_mon,"coordinates")) then
+              delete(aice_nh_ext_mon@coordinates)
               delete(aice_nh_sum_mon@coordinates)
            end if
-           delete([/aice_nh_sum,area3d,area3d_c,wgts/])
+           delete([/aice_nh_ext,aice_nh_sum,area3d,area3d_c,wgts/])
           
-           taice = new((/dimsizes(aice_nh_sum_mon),1,1/),typeof(aice_nh_sum_mon))
+           taice = new((/dimsizes(aice_nh_ext_mon),1,1/),typeof(aice_nh_ext_mon))
            taice!0 = "time"
            taice!1 = "lat"
            taice!2 = "lon"
-           taice(:,0,0) = (/ aice_nh_sum_mon /) ; convert to 3D array so we can use clmMonTLL and calcMonAnomTLL
+           taice(:,0,0) = (/ aice_nh_ext_mon /) ; convert to 3D array so we can use clmMonTLL and calcMonAnomTLL
+           taice2=taice
+           taice2(:,0,0) = (/ aice_nh_sum_mon /) ; convert to 3D array so we can use clmMonTLL and calcMonAnomTLL
            if (OPT_CLIMO.eq."Full") then
               taice = rmMonAnnCycTLL(taice)
+              taice2 = rmMonAnnCycTLL(taice2)
            else
               check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
               temp_arr = taice
-              temp_arr&time = cd_calendar(aice_nh_sum_mon&time,-1)
+              temp_arr&time = cd_calendar(aice_nh_ext_mon&time,-1)
+              temp2_arr = taice2
+              temp2_arr&time = cd_calendar(aice_nh_sum_mon&time,-1)
               if (CLIMO_SYEAR.lt.0) then
                  climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+                 climo2 = clmMonTLL(temp2_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
               else
                  climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
+                 climo2 = clmMonTLL(temp2_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
               end if              
               delete(temp_arr)
               taice   = calcMonAnomTLL(taice,climo) 
               delete(climo)
+              delete(temp2_arr)
+              taice2   = calcMonAnomTLL(taice2,climo2) 
+              delete(climo2)
            end if
-           aice_nh_sum_mon_anom = aice_nh_sum_mon
-           aice_nh_sum_mon_anom = (/ taice(:,0,0) /)
-           aice_nh_sum_mon_anom@long_name = "sea_ice_extent_anomaly"
+           aice_nh_ext_mon_anom = aice_nh_ext_mon
+           aice_nh_ext_mon_anom = (/ taice(:,0,0) /)
+           aice_nh_ext_mon_anom@long_name = "sea_ice_extent_anomaly"
            delete(taice)
+           aice_nh_sum_mon_anom = aice_nh_sum_mon
+           aice_nh_sum_mon_anom = (/ taice2(:,0,0) /)
+           aice_nh_sum_mon_anom@long_name = "sea_ice_area_anomaly"
+           delete(taice2)
 
+           aice_nh_ext_feb = aice_nh_ext_mon(1::12)
+           delete(aice_nh_ext_feb&time)
+           aice_nh_ext_feb@long_name = "February sea_ice_extent"
+           aice_nh_ext_feb!0 = "TIME"
+           aice_nh_ext_feb&TIME = ispan(syear(ee),eyear(ee),1)
+           aice_nh_ext_feb&TIME@units = "YYYY"
+           aice_nh_ext_feb&TIME@long_name = "time"
+           aice_nh_ext_mar = aice_nh_ext_mon(2::12)
+           aice_nh_ext_mar@long_name = "March sea_ice_extent"
+           copy_VarCoords(aice_nh_ext_feb,aice_nh_ext_mar)
+           aice_nh_ext_sep = aice_nh_ext_mon(8::12)
+           aice_nh_ext_sep@long_name = "September sea_ice_extent"
+           copy_VarCoords(aice_nh_ext_feb,aice_nh_ext_sep)
            aice_nh_sum_feb = aice_nh_sum_mon(1::12)
-           delete(aice_nh_sum_feb&time)
-           aice_nh_sum_feb@long_name = "February sea_ice_extent"
-           aice_nh_sum_feb!0 = "TIME"
-           aice_nh_sum_feb&TIME = ispan(syear(ee),eyear(ee),1)
-           aice_nh_sum_feb&TIME@units = "YYYY"
-           aice_nh_sum_feb&TIME@long_name = "time"
+           aice_nh_sum_feb@long_name = "February sea_ice_area"
+           copy_VarCoords(aice_nh_ext_feb,aice_nh_sum_feb)
            aice_nh_sum_mar = aice_nh_sum_mon(2::12)
-           aice_nh_sum_mar@long_name = "March sea_ice_extent"
+           aice_nh_sum_mar@long_name = "March sea_ice_area"
            copy_VarCoords(aice_nh_sum_feb,aice_nh_sum_mar)
            aice_nh_sum_sep = aice_nh_sum_mon(8::12)
-           aice_nh_sum_sep@long_name = "September sea_ice_extent"
+           aice_nh_sum_sep@long_name = "September sea_ice_area"
            copy_VarCoords(aice_nh_sum_feb,aice_nh_sum_sep)
 
+           aice_nh_ext_climo = new(12,typeof(aice_nh_ext_mon))
+           copy_VarAtts(aice_nh_ext_mon,aice_nh_ext_climo)
+           aice_nh_ext_climo@long_name = "climatological_sea_ice_extent"
+           aice_nh_ext_climo!0 = "time_mon2"
+           aice_nh_ext_climo&time_mon2 = time_mon2
            aice_nh_sum_climo = new(12,typeof(aice_nh_sum_mon))
            copy_VarAtts(aice_nh_sum_mon,aice_nh_sum_climo)
-           aice_nh_sum_climo@long_name = "climatological_sea_ice_extent"
+           aice_nh_sum_climo@long_name = "climatological_sea_ice_area"
            aice_nh_sum_climo!0 = "time_mon2"
            aice_nh_sum_climo&time_mon2 = time_mon2
            do gg = 0,11
+              aice_nh_ext_climo(gg) = (/ avg(aice_nh_ext_mon(gg::12)) /)
               aice_nh_sum_climo(gg) = (/ avg(aice_nh_sum_mon(gg::12)) /)
            end do    
 
-           temp = runave_Wrap(aice_nh_sum_mon,3,0)
-           aice_nh_sum_djf = temp(0::12)
-           aice_nh_sum_mam = temp(3::12)
-           aice_nh_sum_jja = temp(6::12)
-           aice_nh_sum_son = temp(9::12)
-           delete(temp)
-           temp = runave_Wrap(aice_nh_sum_mon,12,0)
-           aice_nh_sum_ann = temp(5::12)
-           delete(temp)
+           temp = runave_Wrap(aice_nh_ext_mon,3,0)
+           aice_nh_ext_djf = temp(0::12)
+           aice_nh_ext_mam = temp(3::12)
+           aice_nh_ext_jja = temp(6::12)
+           aice_nh_ext_son = temp(9::12)
+           temp2 = runave_Wrap(aice_nh_sum_mon,3,0)
+           aice_nh_sum_djf = temp2(0::12)
+           aice_nh_sum_mam = temp2(3::12)
+           aice_nh_sum_jja = temp2(6::12)
+           aice_nh_sum_son = temp2(9::12)
+           delete([/temp,temp2/])
+           temp = runave_Wrap(aice_nh_ext_mon,12,0)
+           aice_nh_ext_ann = temp(5::12)
+           temp2 = runave_Wrap(aice_nh_sum_mon,12,0)
+           aice_nh_sum_ann = temp2(5::12)
+           delete([/temp,temp2/])
 
+           delete(aice_nh_ext_djf&time)
+           aice_nh_ext_djf!0 = "TIME"
+           aice_nh_ext_djf&TIME = ispan(syear(ee),eyear(ee),1)
+           aice_nh_ext_djf&TIME@units = "YYYY"
+           aice_nh_ext_djf&TIME@long_name = "time"
+           copy_VarMeta(aice_nh_ext_djf,aice_nh_ext_mam)
+           copy_VarMeta(aice_nh_ext_djf,aice_nh_ext_jja)
+           copy_VarMeta(aice_nh_ext_djf,aice_nh_ext_son)
+           copy_VarMeta(aice_nh_ext_djf,aice_nh_ext_ann)
            delete(aice_nh_sum_djf&time)
            aice_nh_sum_djf!0 = "TIME"
            aice_nh_sum_djf&TIME = ispan(syear(ee),eyear(ee),1)
@@ -328,88 +385,136 @@ begin
         if (isatt(aice_sh,"area")) then
            area3d = aice_sh@area
            area3d_c = conform(aice_sh,area3d,(/1,2/))
+           aice_sh_ext = aice_sh
+;           aice_sh_ext = (/ (where((aice_sh/100.).ge.0.15,(aice_sh/100.),aice_sh@_FillValue))*area3d_c /) ;   ice area calculation (all cells > 15% kept) 
+           aice_sh_ext = (/ where(aice_sh.ge.15,1.,aice_sh@_FillValue) /) ; ice extent calculation (all cells greater than 15% treated as 100% covered)
+           aice_sh_ext = aice_sh_ext*area3d_c
            aice_sh_sum = aice_sh
-;           aice_sh_sum = (/ (where((aice_sh/100.).ge.0.15,(aice_sh/100.),aice_sh@_FillValue))*area3d_c /) ;   ice area calculation (all cells > 15% kept) 
-           aice_sh_sum = (/ where(aice_sh.ge.15,1.,aice_sh@_FillValue) /) ; ice extent calculation (all cells greater than 15% treated as 100% covered)
-           aice_sh_sum = aice_sh_sum*area3d_c
-           wgts = aice_sh_sum(0,:,:)
+           aice_sh_sum = (/aice_sh*area3d_c*0.01/) ;convert percentage to fraction and multiply by area 
+           wgts = aice_sh_ext(0,:,:)
            wgts = 1.
+           aice_sh_ext_mon = aice_sh_ext(:,0,0)   ; preallocate array to retain metadata
+           aice_sh_ext_mon = (/ wgt_areasum2(aice_sh_ext,wgts,0) /)
+;           do gg = 0,dimsizes(aice_sh&time)-1
+;              aice_sh_ext_mon(gg) = (/ sum(aice_sh_ext(gg,:,:)) /)
+;           end do
+           aice_sh_ext_mon = aice_sh_ext_mon/1.e12
+           aice_sh_ext_mon@units = "10^12 m2"
+           aice_sh_ext_mon@long_name = "sea_ice_extent"
            aice_sh_sum_mon = aice_sh_sum(:,0,0)   ; preallocate array to retain metadata
            aice_sh_sum_mon = (/ wgt_areasum2(aice_sh_sum,wgts,0) /)
-;           do gg = 0,dimsizes(aice_sh&time)-1
-;              aice_sh_sum_mon(gg) = (/ sum(aice_sh_sum(gg,:,:)) /)
-;           end do
            aice_sh_sum_mon = aice_sh_sum_mon/1.e12
            aice_sh_sum_mon@units = "10^12 m2"
-           aice_sh_sum_mon@long_name = "sea_ice_extent"
-           if (isatt(aice_sh_sum_mon,"coordinates")) then
+           aice_sh_sum_mon@long_name = "sea_ice_area"
+           if (isatt(aice_sh_ext_mon,"coordinates")) then
+              delete(aice_sh_ext_mon@coordinates)
               delete(aice_sh_sum_mon@coordinates)
            end if
-           delete([/aice_sh_sum,area3d,area3d_c,wgts/])
+           delete([/aice_sh_ext,aice_sh_sum,area3d,area3d_c,wgts/])
 
-           taice = new((/dimsizes(aice_sh_sum_mon),1,1/),typeof(aice_sh_sum_mon))
+           taice = new((/dimsizes(aice_sh_ext_mon),1,1/),typeof(aice_sh_ext_mon))
            taice!0 = "time"
            taice!1 = "lat"
            taice!2 = "lon"
-           taice(:,0,0) = (/ aice_sh_sum_mon /) ; convert to 3D array so we can use clmMonTLL and calcMonAnomTLL
+           taice2=taice
+           taice(:,0,0) = (/ aice_sh_ext_mon /) ; convert to 3D array so we can use clmMonTLL and calcMonAnomTLL
+           taice2(:,0,0) = (/ aice_sh_sum_mon /) ; convert to 3D array so we can use clmMonTLL and calcMonAnomTLL
            if (OPT_CLIMO.eq."Full") then
               taice = rmMonAnnCycTLL(taice)
+              taice2 = rmMonAnnCycTLL(taice2)
            else
               check_custom_climo(names_sh(ee),syear_sh(ee),eyear_sh(ee),CLIMO_SYEAR,CLIMO_EYEAR)
               temp_arr = taice
-              temp_arr&time = cd_calendar(aice_sh_sum_mon&time,-1)
+              temp_arr&time = cd_calendar(aice_sh_ext_mon&time,-1)
+              temp2_arr = taice2
+              temp2_arr&time = cd_calendar(aice_sh_sum_mon&time,-1)
               if (CLIMO_SYEAR.lt.0) then
                  climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+                 climo2 = clmMonTLL(temp2_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
               else
                  climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
+                 climo2 = clmMonTLL(temp2_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
               end if               
-              delete(temp_arr)
+              delete([/temp_arr,temp2_arr/])
               taice   = calcMonAnomTLL(taice,climo) 
-              delete(climo)
+              taice2   = calcMonAnomTLL(taice2,climo2) 
+              delete([/climo,climo2/])
            end if
+           aice_sh_ext_mon_anom = aice_sh_ext_mon
+           aice_sh_ext_mon_anom = (/ taice(:,0,0) /)
+           aice_sh_ext_mon_anom@long_name = "sea_ice_extent_anomaly"
            aice_sh_sum_mon_anom = aice_sh_sum_mon
-           aice_sh_sum_mon_anom = (/ taice(:,0,0) /)
-           aice_sh_sum_mon_anom@long_name = "sea_ice_extent_anomaly"
-           delete(taice)
+           aice_sh_sum_mon_anom = (/ taice2(:,0,0) /)
+           aice_sh_sum_mon_anom@long_name = "sea_ice_area_anomaly"
+           delete([/taice,taice2/])
 
+           aice_sh_ext_feb = aice_sh_ext_mon(1::12)
+           delete(aice_sh_ext_feb&time)
+           aice_sh_ext_feb@long_name = "February sea_ice_extent"
+           aice_sh_ext_feb!0 = "TIME"
+           aice_sh_ext_feb&TIME = ispan(syear_sh(ee),eyear_sh(ee),1)
+           aice_sh_ext_feb&TIME@units = "YYYY"
+           aice_sh_ext_feb&TIME@long_name = "time"
+           aice_sh_ext_mar = aice_sh_ext_mon(2::12)
+           aice_sh_ext_mar@long_name = "March sea_ice_extent"
+           copy_VarCoords(aice_sh_ext_feb,aice_sh_ext_mar)
+           aice_sh_ext_sep = aice_sh_ext_mon(8::12)
+           aice_sh_ext_sep@long_name = "September sea_ice_extent"
+           copy_VarCoords(aice_sh_ext_feb,aice_sh_ext_sep)
            aice_sh_sum_feb = aice_sh_sum_mon(1::12)
-           delete(aice_sh_sum_feb&time)
-           aice_sh_sum_feb@long_name = "February sea_ice_extent"
-           aice_sh_sum_feb!0 = "TIME"
-           aice_sh_sum_feb&TIME = ispan(syear_sh(ee),eyear_sh(ee),1)
-           aice_sh_sum_feb&TIME@units = "YYYY"
-           aice_sh_sum_feb&TIME@long_name = "time"
+           aice_sh_sum_feb@long_name = "February sea_ice_area"
+           copy_VarCoords(aice_sh_ext_feb,aice_sh_sum_feb)
            aice_sh_sum_mar = aice_sh_sum_mon(2::12)
-           aice_sh_sum_mar@long_name = "March sea_ice_extent"
+           aice_sh_sum_mar@long_name = "March sea_ice_area"
            copy_VarCoords(aice_sh_sum_feb,aice_sh_sum_mar)
            aice_sh_sum_sep = aice_sh_sum_mon(8::12)
-           aice_sh_sum_sep@long_name = "September sea_ice_extent"
+           aice_sh_sum_sep@long_name = "September sea_ice_area"
            copy_VarCoords(aice_sh_sum_feb,aice_sh_sum_sep)
 
-           aice_sh_sum_climo = new(12,typeof(aice_sh_sum_mon))
-           copy_VarAtts(aice_sh_sum_mon,aice_sh_sum_climo)
-           aice_sh_sum_climo@long_name = "climatological_sea_ice_extent"
-           aice_sh_sum_climo!0 = "time_mon2"
-           aice_sh_sum_climo&time_mon2 = time_mon2
+           aice_sh_ext_climo = new(12,typeof(aice_sh_ext_mon))
+           copy_VarAtts(aice_sh_ext_mon,aice_sh_ext_climo)
+           aice_sh_ext_climo@long_name = "climatological_sea_ice_extent"
+           aice_sh_ext_climo!0 = "time_mon2"
+           aice_sh_ext_climo&time_mon2 = time_mon2
+           aice_sh_sum_climo=aice_sh_ext_climo
+           aice_sh_sum_climo@long_name = "climatological_sea_ice_area"
            do gg = 0,11
+              aice_sh_ext_climo(gg) = (/ avg(aice_sh_ext_mon(gg::12)) /)
               aice_sh_sum_climo(gg) = (/ avg(aice_sh_sum_mon(gg::12)) /)
            end do    
 
-           temp = runave_Wrap(aice_sh_sum_mon,3,0)
-           aice_sh_sum_djf = temp(0::12)
-           aice_sh_sum_mam = temp(3::12)
-           aice_sh_sum_jja = temp(6::12)
-           aice_sh_sum_son = temp(9::12)
-           delete(temp)
-           temp = runave_Wrap(aice_sh_sum_mon,12,0)
-           aice_sh_sum_ann = temp(5::12)
-           delete(temp)
+           temp = runave_Wrap(aice_sh_ext_mon,3,0)
+           aice_sh_ext_djf = temp(0::12)
+           aice_sh_ext_mam = temp(3::12)
+           aice_sh_ext_jja = temp(6::12)
+           aice_sh_ext_son = temp(9::12)
+           temp2 = runave_Wrap(aice_sh_sum_mon,3,0)
+           aice_sh_sum_djf = temp2(0::12)
+           aice_sh_sum_mam = temp2(3::12)
+           aice_sh_sum_jja = temp2(6::12)
+           aice_sh_sum_son = temp2(9::12)
+           delete([/temp,temp2/])
+           temp = runave_Wrap(aice_sh_ext_mon,12,0)
+           aice_sh_ext_ann = temp(5::12)
+           temp2 = runave_Wrap(aice_sh_sum_mon,12,0)
+           aice_sh_sum_ann = temp2(5::12)
+           delete([/temp,temp2/])
 
+           delete(aice_sh_ext_djf&time)
+           aice_sh_ext_djf!0 = "TIME"
+           aice_sh_ext_djf&TIME = ispan(syear_sh(ee),eyear_sh(ee),1)
+           aice_sh_ext_djf&TIME@units = "YYYY"
+           aice_sh_ext_djf&TIME@long_name = "time"
+           copy_VarMeta(aice_sh_ext_djf,aice_sh_ext_mam)
+           copy_VarMeta(aice_sh_ext_djf,aice_sh_ext_jja)
+           copy_VarMeta(aice_sh_ext_djf,aice_sh_ext_son)
+           copy_VarMeta(aice_sh_ext_djf,aice_sh_ext_ann)
            delete(aice_sh_sum_djf&time)
            aice_sh_sum_djf!0 = "TIME"
-           aice_sh_sum_djf&TIME = ispan(syear_sh(ee),eyear_sh(ee),1)
+           aice_sh_sum_djf&TIME = ispan(syear(ee),eyear(ee),1)
            aice_sh_sum_djf&TIME@units = "YYYY"
            aice_sh_sum_djf&TIME@long_name = "time"
+           printVarSummary(aice_sh_sum_djf)
            copy_VarMeta(aice_sh_sum_djf,aice_sh_sum_mam)
            copy_VarMeta(aice_sh_sum_djf,aice_sh_sum_jja)
            copy_VarMeta(aice_sh_sum_djf,aice_sh_sum_son)
@@ -526,6 +631,65 @@ begin
         z->sic_nh_trends_ann = set_varAtts(nh_trends_ann,"Northern Hemisphere sic trends (annual)","","")
         z->sic_nh_trends_mon = set_varAtts(nh_trends_mon,"Northern Hemisphere sic trends (monthly)","","")
         
+        if (isvar("aice_nh_ext_djf")) then
+           nh_ext_climo = (/ aice_nh_ext_climo /)
+           copy_VarAtts(aice_nh_ext_djf,nh_ext_climo)
+           nh_ext_climo!0 = "time_mon2"
+           nh_ext_climo&time_mon2 = time_mon2
+           if (isatt(nh_ext_climo,"lat2d")) then
+              delete(nh_ext_climo@lat2d)
+              delete(nh_ext_climo@lon2d)
+           end if
+           if (isatt(nh_ext_climo,"area")) then
+              delete(nh_ext_climo@area)
+           end if
+           z->sic_nh_extent_climo = set_varAtts(nh_ext_climo,"Northern Hemisphere sic extent climatology","","")
+           nh_ext_djf = aice_nh_ext_djf
+           if (isatt(nh_ext_djf,"lat2d")) then
+              delete(nh_ext_djf@lat2d)
+              delete(nh_ext_djf@lon2d)
+           end if
+           if (isatt(nh_ext_djf,"area")) then
+              delete(nh_ext_djf@area)
+           end if
+           nh_ext_mam = (/ aice_nh_ext_mam /)
+           copy_VarMeta(nh_ext_djf,nh_ext_mam)
+           nh_ext_jja = (/ aice_nh_ext_jja /)
+           copy_VarMeta(nh_ext_djf,nh_ext_jja)
+           nh_ext_son = (/ aice_nh_ext_son /)
+           copy_VarMeta(nh_ext_djf,nh_ext_son)
+           nh_ext_ann = (/ aice_nh_ext_ann /)
+           copy_VarMeta(nh_ext_djf,nh_ext_ann)
+           nh_ext_feb = (/ aice_nh_ext_feb /)
+           copy_VarMeta(nh_ext_djf,nh_ext_feb)
+           nh_ext_mar = (/ aice_nh_ext_mar /)
+           copy_VarMeta(nh_ext_djf,nh_ext_mar)
+           nh_ext_sep = (/ aice_nh_ext_sep /)
+           copy_VarMeta(nh_ext_djf,nh_ext_sep)
+           nh_ext_mon = aice_nh_ext_mon
+           nh_ext_mon_anom = aice_nh_ext_mon_anom
+           if (isatt(nh_ext_mon,"lat2d")) then
+              delete(nh_ext_mon@lat2d)
+              delete(nh_ext_mon@lon2d)
+              delete(nh_ext_mon_anom@lat2d)
+              delete(nh_ext_mon_anom@lon2d)
+           end if
+           if (isatt(nh_ext_mon,"area")) then
+              delete(nh_ext_mon@area)
+              delete(nh_ext_mon_anom@area)
+           end if
+           z->sic_nh_extent_djf = set_varAtts(nh_ext_djf,"Northern Hemisphere sic extent timeseries (DJF)","","")
+           z->sic_nh_extent_mam = set_varAtts(nh_ext_mam,"Northern Hemisphere sic extent timeseries (MAM)","","")
+           z->sic_nh_extent_jja = set_varAtts(nh_ext_jja,"Northern Hemisphere sic extent timeseries (JJA)","","")
+           z->sic_nh_extent_son = set_varAtts(nh_ext_son,"Northern Hemisphere sic extent timeseries (SON)","","")
+           z->sic_nh_extent_ann = set_varAtts(nh_ext_ann,"Northern Hemisphere sic extent timeseries (annual)","","")
+           z->sic_nh_extent_mon = set_varAtts(nh_ext_mon,"Northern Hemisphere sic extent timeseries (monthly)","","")
+           z->sic_nh_extent_mon_anom = set_varAtts(nh_ext_mon_anom,"Northern Hemisphere sic extent anomaly timeseries (monthly)","","")
+           z->sic_nh_extent_feb = set_varAtts(nh_ext_feb,"Northern Hemisphere sic extent timeseries (February)","","")
+           z->sic_nh_extent_mar = set_varAtts(nh_ext_mar,"Northern Hemisphere sic extent timeseries (March)","","")
+           z->sic_nh_extent_sep = set_varAtts(nh_ext_sep,"Northern Hemisphere sic extent timeseries (September)","","")
+           delete([/nh_ext_djf,nh_ext_mam,nh_ext_jja,nh_ext_son,nh_ext_ann,nh_ext_feb,nh_ext_mar,nh_ext_sep,nh_ext_mon,nh_ext_mon_anom/])
+        end if
         if (isvar("aice_nh_sum_djf")) then
            nh_sum_climo = (/ aice_nh_sum_climo /)
            copy_VarAtts(aice_nh_sum_djf,nh_sum_climo)
@@ -538,7 +702,7 @@ begin
            if (isatt(nh_sum_climo,"area")) then
               delete(nh_sum_climo@area)
            end if
-           z->sic_nh_extent_climo = set_varAtts(nh_sum_climo,"Northern Hemisphere sic extent climatology","","")
+           z->sic_nh_area_climo = set_varAtts(nh_sum_climo,"Northern Hemisphere sea ice area climatology","","")
            nh_sum_djf = aice_nh_sum_djf
            if (isatt(nh_sum_djf,"lat2d")) then
               delete(nh_sum_djf@lat2d)
@@ -573,21 +737,22 @@ begin
               delete(nh_sum_mon@area)
               delete(nh_sum_mon_anom@area)
            end if
-           z->sic_nh_extent_djf = set_varAtts(nh_sum_djf,"Northern Hemisphere sic extent timeseries (DJF)","","")
-           z->sic_nh_extent_mam = set_varAtts(nh_sum_mam,"Northern Hemisphere sic extent timeseries (MAM)","","")
-           z->sic_nh_extent_jja = set_varAtts(nh_sum_jja,"Northern Hemisphere sic extent timeseries (JJA)","","")
-           z->sic_nh_extent_son = set_varAtts(nh_sum_son,"Northern Hemisphere sic extent timeseries (SON)","","")
-           z->sic_nh_extent_ann = set_varAtts(nh_sum_ann,"Northern Hemisphere sic extent timeseries (annual)","","")
-           z->sic_nh_extent_mon = set_varAtts(nh_sum_mon,"Northern Hemisphere sic extent timeseries (monthly)","","")
-           z->sic_nh_extent_mon_anom = set_varAtts(nh_sum_mon_anom,"Northern Hemisphere sic extent anomaly timeseries (monthly)","","")
-           z->sic_nh_extent_feb = set_varAtts(nh_sum_feb,"Northern Hemisphere sic extent timeseries (February)","","")
-           z->sic_nh_extent_mar = set_varAtts(nh_sum_mar,"Northern Hemisphere sic extent timeseries (March)","","")
-           z->sic_nh_extent_sep = set_varAtts(nh_sum_sep,"Northern Hemisphere sic extent timeseries (September)","","")
+           z->sic_nh_area_djf = set_varAtts(nh_sum_djf,"Northern Hemisphere sea ice area timeseries (DJF)","","")
+           z->sic_nh_area_mam = set_varAtts(nh_sum_mam,"Northern Hemisphere sea ice area timeseries (MAM)","","")
+           z->sic_nh_area_jja = set_varAtts(nh_sum_jja,"Northern Hemisphere sea ice area timeseries (JJA)","","")
+           z->sic_nh_area_son = set_varAtts(nh_sum_son,"Northern Hemisphere sea ice area timeseries (SON)","","")
+           z->sic_nh_area_ann = set_varAtts(nh_sum_ann,"Northern Hemisphere sea ice area timeseries (annual)","","")
+           z->sic_nh_area_mon = set_varAtts(nh_sum_mon,"Northern Hemisphere sea ice area timeseries (monthly)","","")
+           z->sic_nh_area_mon_anom = set_varAtts(nh_sum_mon_anom,"Northern Hemisphere sea ice area anomaly timeseries (monthly)","","")
+           z->sic_nh_area_feb = set_varAtts(nh_sum_feb,"Northern Hemisphere sea ice area timeseries (February)","","")
+           z->sic_nh_area_mar = set_varAtts(nh_sum_mar,"Northern Hemisphere sea ice area timeseries (March)","","")
+           z->sic_nh_area_sep = set_varAtts(nh_sum_sep,"Northern Hemisphere sea ice area timeseries (September)","","")
            delete([/nh_sum_djf,nh_sum_mam,nh_sum_jja,nh_sum_son,nh_sum_ann,nh_sum_feb,nh_sum_mar,nh_sum_sep,nh_sum_mon,nh_sum_mon_anom/])
         end if
         delete([/nh_trends_seas,nh_trends_ann,nh_trends_mon/])
         delete(z)
      end if
+
      if (OUTPUT_DATA.eq."True".and.aice_sh_flag.eq.0) then
         modname = str_sub_str(names_sh(ee)," ","_")
         bc = (/"/","'","(",")"/)
@@ -642,6 +807,66 @@ begin
         z->sic_sh_trends_ann = set_varAtts(sh_trends_ann,"Southern Hemisphere sic trends (annual)","","")
         z->sic_sh_trends_mon = set_varAtts(sh_trends_mon,"Southern Hemisphere sic trends (monthly)","","")
         
+        if (isvar("aice_sh_ext_djf")) then
+           sh_ext_climo = (/ aice_sh_ext_climo /)
+           copy_VarAtts(aice_sh_ext_djf,sh_ext_climo)
+           sh_ext_climo!0 = "time_mon2"
+           sh_ext_climo&time_mon2 = time_mon2
+           if (isatt(sh_ext_climo,"lat2d")) then
+              delete(sh_ext_climo@lat2d)
+              delete(sh_ext_climo@lon2d)
+           end if
+           if (isatt(sh_ext_climo,"area")) then
+              delete(sh_ext_climo@area)
+           end if
+           z->sic_sh_extent_climo = set_varAtts(sh_ext_climo,"Southern Hemisphere sic extent climatology","","")
+           sh_ext_djf = aice_sh_ext_djf 
+           if (isatt(sh_ext_djf,"lat2d")) then
+              delete(sh_ext_djf@lat2d)
+              delete(sh_ext_djf@lon2d)
+           end if
+           if (isatt(sh_ext_djf,"area")) then
+              delete(sh_ext_djf@area)
+           end if
+           sh_ext_mam = (/ aice_sh_ext_mam /)
+           copy_VarMeta(sh_ext_djf,sh_ext_mam)
+           sh_ext_jja = (/ aice_sh_ext_jja /)
+           copy_VarMeta(sh_ext_djf,sh_ext_jja)
+           sh_ext_son = (/ aice_sh_ext_son /)
+           copy_VarMeta(sh_ext_djf,sh_ext_son)
+           sh_ext_ann = (/ aice_sh_ext_ann /)
+           copy_VarMeta(sh_ext_djf,sh_ext_ann)
+           sh_ext_feb = (/ aice_sh_ext_feb /)
+           copy_VarMeta(sh_ext_djf,sh_ext_feb)
+           sh_ext_mar = (/ aice_sh_ext_mar /)
+           copy_VarMeta(sh_ext_djf,sh_ext_mar)
+           sh_ext_sep = (/ aice_sh_ext_sep /)
+           copy_VarMeta(sh_ext_djf,sh_ext_sep)
+           sh_ext_mon = aice_sh_ext_mon
+           sh_ext_mon_anom = aice_sh_ext_mon_anom
+           if (isatt(sh_ext_mon,"lat2d")) then
+              delete(sh_ext_mon@lat2d)
+              delete(sh_ext_mon@lon2d)
+              delete(sh_ext_mon_anom@lat2d)
+              delete(sh_ext_mon_anom@lon2d)
+           end if
+           if (isatt(sh_ext_mon,"area")) then
+              delete(sh_ext_mon@area)
+              delete(sh_ext_mon_anom@area)
+           end if
+           z->sic_sh_extent_djf = set_varAtts(sh_ext_djf,"Southern Hemisphere sic extent timeseries (DJF)","","")
+           z->sic_sh_extent_mam = set_varAtts(sh_ext_mam,"Southern Hemisphere sic extent timeseries (MAM)","","")
+           z->sic_sh_extent_jja = set_varAtts(sh_ext_jja,"Southern Hemisphere sic extent timeseries (JJA)","","")
+           z->sic_sh_extent_son = set_varAtts(sh_ext_son,"Southern Hemisphere sic extent timeseries (SON)","","")
+           z->sic_sh_extent_ann = set_varAtts(sh_ext_ann,"Southern Hemisphere sic extent timeseries (annual)","","")
+           z->sic_sh_extent_mon = set_varAtts(sh_ext_mon,"Southern Hemisphere sic extent timeseries (monthly)","","")
+           z->sic_sh_extent_mon_anom = set_varAtts(sh_ext_mon_anom,"Southern Hemisphere sic extent anomaly timeseries (monthly)","","")
+           z->sic_sh_extent_feb = set_varAtts(sh_ext_feb,"Southern Hemisphere sic extent timeseries (February)","","")
+           z->sic_sh_extent_mar = set_varAtts(sh_ext_mar,"Southern Hemisphere sic extent timeseries (March)","","")
+           z->sic_sh_extent_sep = set_varAtts(sh_ext_sep,"Southern Hemisphere sic extent timeseries (September)","","")
+           delete([/sh_ext_djf,sh_ext_mam,sh_ext_jja,sh_ext_son,sh_ext_ann,sh_ext_feb,sh_ext_mar,sh_ext_sep,sh_ext_mon,sh_ext_mon_anom/])
+        end if
+
         if (isvar("aice_sh_sum_djf")) then
            sh_sum_climo = (/ aice_sh_sum_climo /)
            copy_VarAtts(aice_sh_sum_djf,sh_sum_climo)
@@ -654,7 +879,7 @@ begin
            if (isatt(sh_sum_climo,"area")) then
               delete(sh_sum_climo@area)
            end if
-           z->sic_sh_extent_climo = set_varAtts(sh_sum_climo,"Southern Hemisphere sic extent climatology","","")
+           z->sic_sh_area_climo = set_varAtts(sh_sum_climo,"Southern Hemisphere sea ice area climatology","","")
            sh_sum_djf = aice_sh_sum_djf
            if (isatt(sh_sum_djf,"lat2d")) then
               delete(sh_sum_djf@lat2d)
@@ -689,21 +914,29 @@ begin
               delete(sh_sum_mon@area)
               delete(sh_sum_mon_anom@area)
            end if
-           z->sic_sh_extent_djf = set_varAtts(sh_sum_djf,"Southern Hemisphere sic extent timeseries (DJF)","","")
-           z->sic_sh_extent_mam = set_varAtts(sh_sum_mam,"Southern Hemisphere sic extent timeseries (MAM)","","")
-           z->sic_sh_extent_jja = set_varAtts(sh_sum_jja,"Southern Hemisphere sic extent timeseries (JJA)","","")
-           z->sic_sh_extent_son = set_varAtts(sh_sum_son,"Southern Hemisphere sic extent timeseries (SON)","","")
-           z->sic_sh_extent_ann = set_varAtts(sh_sum_ann,"Southern Hemisphere sic extent timeseries (annual)","","")
-           z->sic_sh_extent_mon = set_varAtts(sh_sum_mon,"Southern Hemisphere sic extent timeseries (monthly)","","")
-           z->sic_sh_extent_mon_anom = set_varAtts(sh_sum_mon_anom,"Southern Hemisphere sic extent anomaly timeseries (monthly)","","")
-           z->sic_sh_extent_feb = set_varAtts(sh_sum_feb,"Southern Hemisphere sic extent timeseries (February)","","")
-           z->sic_sh_extent_mar = set_varAtts(sh_sum_mar,"Southern Hemisphere sic extent timeseries (March)","","")
-           z->sic_sh_extent_sep = set_varAtts(sh_sum_sep,"Southern Hemisphere sic extent timeseries (September)","","")
+           z->sic_sh_area_djf = set_varAtts(sh_sum_djf,"Southern Hemisphere sea ice area timeseries (DJF)","","")
+           z->sic_sh_area_mam = set_varAtts(sh_sum_mam,"Southern Hemisphere sea ice area timeseries (MAM)","","")
+           z->sic_sh_area_jja = set_varAtts(sh_sum_jja,"Southern Hemisphere sea ice area timeseries (JJA)","","")
+           z->sic_sh_area_son = set_varAtts(sh_sum_son,"Southern Hemisphere sea ice area timeseries (SON)","","")
+           z->sic_sh_area_ann = set_varAtts(sh_sum_ann,"Southern Hemisphere sea ice area timeseries (annual)","","")
+           z->sic_sh_area_mon = set_varAtts(sh_sum_mon,"Southern Hemisphere sea ice area timeseries (monthly)","","")
+           z->sic_sh_area_mon_anom = set_varAtts(sh_sum_mon_anom,"Southern Hemisphere sea ice area anomaly timeseries (monthly)","","")
+           z->sic_sh_area_feb = set_varAtts(sh_sum_feb,"Southern Hemisphere sea ice area timeseries (February)","","")
+           z->sic_sh_area_mar = set_varAtts(sh_sum_mar,"Southern Hemisphere sea ice area timeseries (March)","","")
+           z->sic_sh_area_sep = set_varAtts(sh_sum_sep,"Southern Hemisphere sea ice area timeseries (September)","","")
            delete([/sh_sum_djf,sh_sum_mam,sh_sum_jja,sh_sum_son,sh_sum_ann,sh_sum_feb,sh_sum_mar,sh_sum_sep,sh_sum_mon,sh_sum_mon_anom/])
         end if
         delete([/sh_trends_seas,sh_trends_ann,sh_trends_mon/])
         delete(z)
      end if
+     ;At present, the sea ice area timeseries are not plotted - just output. So tidy them up here   
+     if (aice_nh_flag.eq.0) then
+       delete([/aice_nh_sum_djf,aice_nh_sum_mam,aice_nh_sum_jja,aice_nh_sum_son,aice_nh_sum_ann,aice_nh_sum_feb,aice_nh_sum_mar,aice_nh_sum_sep,aice_nh_sum_mon,aice_nh_sum_mon_anom/])
+     end if
+     if (aice_sh_flag.eq.0) then
+       delete([/aice_sh_sum_djf,aice_sh_sum_mam,aice_sh_sum_jja,aice_sh_sum_son,aice_sh_sum_ann,aice_sh_sum_feb,aice_sh_sum_mar,aice_sh_sum_sep,aice_sh_sum_mon,aice_sh_sum_mon_anom/])
+     end if
+
      if (aice_nh_flag.eq.0) then
         aice_nh_trends_seas = where(aice_nh_trends_seas.eq.0,aice_nh_trends_seas@_FillValue,aice_nh_trends_seas)
         aice_nh_trends_ann = where(aice_nh_trends_ann.eq.0,aice_nh_trends_ann@_FillValue,aice_nh_trends_ann)
@@ -846,205 +1079,205 @@ begin
         plot_trends_nh_mon(ee) = gsn_csm_contour_map(wks_trends_mon,aice_nh_trends_mon,res)
         delete([/aice_nh_trends_seas,aice_nh_trends_ann,aice_nh_trends_mon/])
 
-        if (isvar("aice_nh_sum_djf")) then
+        if (isvar("aice_nh_ext_djf")) then
            xyres@gsnLeftString = names(ee)+ph_s  
            if (isfilepresent2("obs_aice_nh").and.ee.eq.0) then
-              aice_nh_sum_djf_obs_min = min(aice_nh_sum_djf)
-              aice_nh_sum_djf_obs_max = max(aice_nh_sum_djf)
-              aice_nh_sum_mam_obs_min = min(aice_nh_sum_mam)
-              aice_nh_sum_mam_obs_max = max(aice_nh_sum_mam)
-              aice_nh_sum_jja_obs_min = min(aice_nh_sum_jja)
-              aice_nh_sum_jja_obs_max = max(aice_nh_sum_jja)
-              aice_nh_sum_son_obs_min = min(aice_nh_sum_son)
-              aice_nh_sum_son_obs_max = max(aice_nh_sum_son)
-              aice_nh_sum_ann_obs_min = min(aice_nh_sum_ann)
-              aice_nh_sum_ann_obs_max = max(aice_nh_sum_ann)
-              aice_nh_sum_mon_obs_min = min(aice_nh_sum_mon)
-              aice_nh_sum_mon_obs_max = max(aice_nh_sum_mon)
-              aice_nh_sum_mon_anom_obs_min = min(aice_nh_sum_mon_anom)
-              aice_nh_sum_mon_anom_obs_max = max(aice_nh_sum_mon_anom)
-              aice_nh_sum_feb_obs_min = min(aice_nh_sum_feb)
-              aice_nh_sum_feb_obs_max = max(aice_nh_sum_feb)
-              aice_nh_sum_mar_obs_min = min(aice_nh_sum_mar)
-              aice_nh_sum_mar_obs_max = max(aice_nh_sum_mar)
-              aice_nh_sum_sep_obs_min = min(aice_nh_sum_sep)
-              aice_nh_sum_sep_obs_max = max(aice_nh_sum_sep)
-              aice_nh_obs_djf = aice_nh_sum_djf
-              aice_nh_obs_mam = aice_nh_sum_mam
-              aice_nh_obs_jja = aice_nh_sum_jja
-              aice_nh_obs_son = aice_nh_sum_son
-              aice_nh_obs_ann = aice_nh_sum_ann
-              aice_nh_obs_mon = aice_nh_sum_mon
-              aice_nh_obs_mon_anom = aice_nh_sum_mon_anom
-              aice_nh_obs_feb = aice_nh_sum_feb
-              aice_nh_obs_mar = aice_nh_sum_mar
-              aice_nh_obs_sep = aice_nh_sum_sep
-              aice_nh_obs_climo = aice_nh_sum_climo
+              aice_nh_ext_djf_obs_min = min(aice_nh_ext_djf)
+              aice_nh_ext_djf_obs_max = max(aice_nh_ext_djf)
+              aice_nh_ext_mam_obs_min = min(aice_nh_ext_mam)
+              aice_nh_ext_mam_obs_max = max(aice_nh_ext_mam)
+              aice_nh_ext_jja_obs_min = min(aice_nh_ext_jja)
+              aice_nh_ext_jja_obs_max = max(aice_nh_ext_jja)
+              aice_nh_ext_son_obs_min = min(aice_nh_ext_son)
+              aice_nh_ext_son_obs_max = max(aice_nh_ext_son)
+              aice_nh_ext_ann_obs_min = min(aice_nh_ext_ann)
+              aice_nh_ext_ann_obs_max = max(aice_nh_ext_ann)
+              aice_nh_ext_mon_obs_min = min(aice_nh_ext_mon)
+              aice_nh_ext_mon_obs_max = max(aice_nh_ext_mon)
+              aice_nh_ext_mon_anom_obs_min = min(aice_nh_ext_mon_anom)
+              aice_nh_ext_mon_anom_obs_max = max(aice_nh_ext_mon_anom)
+              aice_nh_ext_feb_obs_min = min(aice_nh_ext_feb)
+              aice_nh_ext_feb_obs_max = max(aice_nh_ext_feb)
+              aice_nh_ext_mar_obs_min = min(aice_nh_ext_mar)
+              aice_nh_ext_mar_obs_max = max(aice_nh_ext_mar)
+              aice_nh_ext_sep_obs_min = min(aice_nh_ext_sep)
+              aice_nh_ext_sep_obs_max = max(aice_nh_ext_sep)
+              aice_nh_obs_djf = aice_nh_ext_djf
+              aice_nh_obs_mam = aice_nh_ext_mam
+              aice_nh_obs_jja = aice_nh_ext_jja
+              aice_nh_obs_son = aice_nh_ext_son
+              aice_nh_obs_ann = aice_nh_ext_ann
+              aice_nh_obs_mon = aice_nh_ext_mon
+              aice_nh_obs_mon_anom = aice_nh_ext_mon_anom
+              aice_nh_obs_feb = aice_nh_ext_feb
+              aice_nh_obs_mar = aice_nh_ext_mar
+              aice_nh_obs_sep = aice_nh_ext_sep
+              aice_nh_obs_climo = aice_nh_ext_climo
            end if
 
            xyres_c@gsnLeftString = syear(ee)+"-"+eyear(ee)  
            xyres_c@gsnCenterString = names(ee)+ph_s   ; ph_s is used to denote extent timeseries that have had pole hole areas added in   
-           xyres_c@gsnRightString = "("+str_sub_str(str_sub_str(aice_nh_sum_climo@units,"m2","m~S~2~N~"),"10^12","10~S~12~N~")+")"
+           xyres_c@gsnRightString = "("+str_sub_str(str_sub_str(aice_nh_ext_climo@units,"m2","m~S~2~N~"),"10^12","10~S~12~N~")+")"
            if (ee.eq.0) then
-              plot_iceext_nh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),aice_nh_sum_climo,xyres_c)
+              plot_iceext_nh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),aice_nh_ext_climo,xyres_c)
            end if    
            if (ee.ge.1.) then
               if (isvar("aice_nh_obs_climo")) then
                  tarr = new((/2,12/),float)
-                 tarr(0,:) = (/ tofloat(aice_nh_sum_climo) /)
+                 tarr(0,:) = (/ tofloat(aice_nh_ext_climo) /)
                  tarr(1,:) = (/ tofloat(aice_nh_obs_climo) /)
                  plot_iceext_nh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),tarr,xyres_c)
                  delete(tarr)
               else
-                 plot_iceext_nh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),aice_nh_sum_climo,xyres_c)
+                 plot_iceext_nh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),aice_nh_ext_climo,xyres_c)
               end if
            end if
               
-           if (ee.ge.1.and.isvar("aice_nh_sum_djf_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_djf),aice_nh_sum_djf_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_djf),aice_nh_sum_djf_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_djf_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_djf),aice_nh_ext_djf_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_djf),aice_nh_ext_djf_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_djf)-1,1),aice_nh_sum_djf,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_djf@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_djf(ee)     = gsn_csm_xy(wks_iceext_djf,ispan(syear(ee),eyear(ee),1),aice_nh_sum_djf,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_djf)-1,1),aice_nh_ext_djf,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_djf@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_djf(ee)     = gsn_csm_xy(wks_iceext_djf,ispan(syear(ee),eyear(ee),1),aice_nh_ext_djf,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_djf")) then
               plot_iceext_nh_obs_djf = gsn_csm_xy(wks_iceext_djf,ispan(syear(0),eyear(0),1),aice_nh_obs_djf,xyres2)
               overlay(plot_iceext_nh_djf(ee),plot_iceext_nh_obs_djf)
            end if
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_mam_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_mam),aice_nh_sum_mam_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_mam),aice_nh_sum_mam_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_mam_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_mam),aice_nh_ext_mam_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_mam),aice_nh_ext_mam_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_mam)-1,1),aice_nh_sum_mam,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_mam@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_mam(ee)     = gsn_csm_xy(wks_iceext_mam,ispan(syear(ee),eyear(ee),1),aice_nh_sum_mam,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_mam)-1,1),aice_nh_ext_mam,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_mam@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_mam(ee)     = gsn_csm_xy(wks_iceext_mam,ispan(syear(ee),eyear(ee),1),aice_nh_ext_mam,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_mam")) then
               plot_iceext_nh_obs_mam = gsn_csm_xy(wks_iceext_mam,ispan(syear(0),eyear(0),1),aice_nh_obs_mam,xyres2)
               overlay(plot_iceext_nh_mam(ee),plot_iceext_nh_obs_mam)
            end if      
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_jja_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_jja),aice_nh_sum_jja_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_jja),aice_nh_sum_jja_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_jja_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_jja),aice_nh_ext_jja_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_jja),aice_nh_ext_jja_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_jja)-1,1),aice_nh_sum_jja,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_jja@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_jja(ee)     = gsn_csm_xy(wks_iceext_jja,ispan(syear(ee),eyear(ee),1),aice_nh_sum_jja,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_jja)-1,1),aice_nh_ext_jja,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_jja@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_jja(ee)     = gsn_csm_xy(wks_iceext_jja,ispan(syear(ee),eyear(ee),1),aice_nh_ext_jja,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_jja")) then
               plot_iceext_nh_obs_jja = gsn_csm_xy(wks_iceext_jja,ispan(syear(0),eyear(0),1),aice_nh_obs_jja,xyres2)
               overlay(plot_iceext_nh_jja(ee),plot_iceext_nh_obs_jja)
            end if
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_son_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_son),aice_nh_sum_son_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_son),aice_nh_sum_son_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_son_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_son),aice_nh_ext_son_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_son),aice_nh_ext_son_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_son)-1,1),aice_nh_sum_son,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_son@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_son(ee)     = gsn_csm_xy(wks_iceext_son,ispan(syear(ee),eyear(ee),1),aice_nh_sum_son,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_son)-1,1),aice_nh_ext_son,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_son@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_son(ee)     = gsn_csm_xy(wks_iceext_son,ispan(syear(ee),eyear(ee),1),aice_nh_ext_son,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_son")) then
               plot_iceext_nh_obs_son = gsn_csm_xy(wks_iceext_son,ispan(syear(0),eyear(0),1),aice_nh_obs_son,xyres2)
               overlay(plot_iceext_nh_son(ee),plot_iceext_nh_obs_son)
            end if
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_ann_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_ann),aice_nh_sum_ann_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_ann),aice_nh_sum_ann_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_ann_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_ann),aice_nh_ext_ann_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_ann),aice_nh_ext_ann_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_ann)-1,1),aice_nh_sum_ann,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_ann@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_ann(ee)     = gsn_csm_xy(wks_iceext_ann,ispan(syear(ee),eyear(ee),1),aice_nh_sum_ann,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_ann)-1,1),aice_nh_ext_ann,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_ann@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_ann(ee)     = gsn_csm_xy(wks_iceext_ann,ispan(syear(ee),eyear(ee),1),aice_nh_ext_ann,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_ann")) then
               plot_iceext_nh_obs_ann = gsn_csm_xy(wks_iceext_ann,ispan(syear(0),eyear(0),1),aice_nh_obs_ann,xyres2)
               overlay(plot_iceext_nh_ann(ee),plot_iceext_nh_obs_ann)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_feb_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_feb),aice_nh_sum_feb_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_feb),aice_nh_sum_feb_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_feb_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_feb),aice_nh_ext_feb_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_feb),aice_nh_ext_feb_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_feb)-1,1),aice_nh_sum_feb,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_feb@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_feb(ee)     = gsn_csm_xy(wks_iceext_febmar,ispan(syear(ee),eyear(ee),1),aice_nh_sum_feb,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_feb)-1,1),aice_nh_ext_feb,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_feb@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_feb(ee)     = gsn_csm_xy(wks_iceext_febmar,ispan(syear(ee),eyear(ee),1),aice_nh_ext_feb,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_feb")) then
               plot_iceext_nh_obs_feb = gsn_csm_xy(wks_iceext_febmar,ispan(syear(0),eyear(0),1),aice_nh_obs_feb,xyres2)
               overlay(plot_iceext_nh_feb(ee),plot_iceext_nh_obs_feb)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_mar_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_mar),aice_nh_sum_mar_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_mar),aice_nh_sum_mar_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_mar_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_mar),aice_nh_ext_mar_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_mar),aice_nh_ext_mar_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_mar)-1,1),aice_nh_sum_mar,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_mar@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_mar(ee)     = gsn_csm_xy(wks_iceext_febmar,ispan(syear(ee),eyear(ee),1),aice_nh_sum_mar,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_mar)-1,1),aice_nh_ext_mar,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_mar@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_mar(ee)     = gsn_csm_xy(wks_iceext_febmar,ispan(syear(ee),eyear(ee),1),aice_nh_ext_mar,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_mar")) then
               plot_iceext_nh_obs_mar = gsn_csm_xy(wks_iceext_febmar,ispan(syear(0),eyear(0),1),aice_nh_obs_mar,xyres2)
               overlay(plot_iceext_nh_mar(ee),plot_iceext_nh_obs_mar)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_sep_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_sep),aice_nh_sum_sep_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_sep),aice_nh_sum_sep_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_sep_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_sep),aice_nh_ext_sep_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_sep),aice_nh_ext_sep_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_sep)-1,1),aice_nh_sum_sep,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_sep@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_sep(ee)     = gsn_csm_xy(wks_iceext_sep,ispan(syear(ee),eyear(ee),1),aice_nh_sum_sep,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_sep)-1,1),aice_nh_ext_sep,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_sep@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_sep(ee)     = gsn_csm_xy(wks_iceext_sep,ispan(syear(ee),eyear(ee),1),aice_nh_ext_sep,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_sep")) then
               plot_iceext_nh_obs_sep = gsn_csm_xy(wks_iceext_sep,ispan(syear(0),eyear(0),1),aice_nh_obs_sep,xyres2)
               overlay(plot_iceext_nh_sep(ee),plot_iceext_nh_obs_sep)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_mon_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_mon),aice_nh_sum_mon_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_mon),aice_nh_sum_mon_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_mon_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_mon),aice_nh_ext_mon_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_mon),aice_nh_ext_mon_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_mon)-1,1),aice_nh_sum_mon,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_mon@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_mon(ee)     = gsn_csm_xy(wks_iceext_mon,fspan(syear(ee),eyear(ee)+.91667,dimsizes(aice_nh_sum_mon)),aice_nh_sum_mon,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_mon)-1,1),aice_nh_ext_mon,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_mon@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_mon(ee)     = gsn_csm_xy(wks_iceext_mon,fspan(syear(ee),eyear(ee)+.91667,dimsizes(aice_nh_ext_mon)),aice_nh_ext_mon,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_mon")) then
               plot_iceext_nh_obs_mon = gsn_csm_xy(wks_iceext_mon,fspan(syear(0),eyear(0)+.91667,dimsizes(aice_nh_obs_mon)),aice_nh_obs_mon,xyres2)
               overlay(plot_iceext_nh_mon(ee),plot_iceext_nh_obs_mon)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_nh_sum_mon_anom_obs_min")) then
-              xyres@trYMinF = min((/min(aice_nh_sum_mon_anom),aice_nh_sum_mon_anom_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_nh_sum_mon_anom),aice_nh_sum_mon_anom_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_nh_ext_mon_anom_obs_min")) then
+              xyres@trYMinF = min((/min(aice_nh_ext_mon_anom),aice_nh_ext_mon_anom_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_nh_ext_mon_anom),aice_nh_ext_mon_anom_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_sum_mon_anom)-1,1),aice_nh_sum_mon_anom,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_sum_mon_anom@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_nh_mon_anom(ee)     = gsn_csm_xy(wks_iceext_mon,fspan(syear(ee),eyear(ee)+.91667,dimsizes(aice_nh_sum_mon_anom)),aice_nh_sum_mon_anom,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_nh_ext_mon_anom)-1,1),aice_nh_ext_mon_anom,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr(ee),2,True)+aice_nh_ext_mon_anom@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_nh_mon_anom(ee)     = gsn_csm_xy(wks_iceext_mon,fspan(syear(ee),eyear(ee)+.91667,dimsizes(aice_nh_ext_mon_anom)),aice_nh_ext_mon_anom,xyres)
            if (ee.ge.1.and.isvar("aice_nh_obs_mon_anom")) then
               plot_iceext_nh_obs_mon_anom = gsn_csm_xy(wks_iceext_mon,fspan(syear(0),eyear(0)+.91667,dimsizes(aice_nh_obs_mon_anom)),aice_nh_obs_mon_anom,xyres2)
               overlay(plot_iceext_nh_mon_anom(ee),plot_iceext_nh_obs_mon_anom)
            end if
-           delete([/aice_nh_sum_djf,aice_nh_sum_mam,aice_nh_sum_jja,aice_nh_sum_son,aice_nh_sum_ann,aice_nh_sum_feb,aice_nh_sum_mar,aice_nh_sum_sep,aice_nh_sum_mon,aice_nh_sum_mon_anom,tttt/])
+           delete([/aice_nh_ext_djf,aice_nh_ext_mam,aice_nh_ext_jja,aice_nh_ext_son,aice_nh_ext_ann,aice_nh_ext_feb,aice_nh_ext_mar,aice_nh_ext_sep,aice_nh_ext_mon,aice_nh_ext_mon_anom,tttt/])
         end if
      end if
      
@@ -1071,206 +1304,206 @@ begin
         plot_trends_sh_mon(ee) = gsn_csm_contour_map(wks_trends_mon,aice_sh_trends_mon,res)
         delete([/aice_sh_trends_seas,aice_sh_trends_ann,aice_sh_trends_mon/])
 
-        if (isvar("aice_sh_sum_djf")) then
+        if (isvar("aice_sh_ext_djf")) then
            xyres@gsnLeftString = names_sh(ee)  
            if (isfilepresent2("obs_aice_sh").and.ee.eq.0) then
-              aice_sh_sum_djf_obs_min = min(aice_sh_sum_djf)
-              aice_sh_sum_djf_obs_max = max(aice_sh_sum_djf)
-              aice_sh_sum_mam_obs_min = min(aice_sh_sum_mam)
-              aice_sh_sum_mam_obs_max = max(aice_sh_sum_mam)
-              aice_sh_sum_jja_obs_min = min(aice_sh_sum_jja)
-              aice_sh_sum_jja_obs_max = max(aice_sh_sum_jja)
-              aice_sh_sum_son_obs_min = min(aice_sh_sum_son)
-              aice_sh_sum_son_obs_max = max(aice_sh_sum_son)
-              aice_sh_sum_ann_obs_min = min(aice_sh_sum_ann)
-              aice_sh_sum_ann_obs_max = max(aice_sh_sum_ann)
-              aice_sh_sum_mon_obs_min = min(aice_sh_sum_mon)
-              aice_sh_sum_mon_obs_max = max(aice_sh_sum_mon)
-              aice_sh_sum_mon_anom_obs_min = min(aice_sh_sum_mon_anom)
-              aice_sh_sum_mon_anom_obs_max = max(aice_sh_sum_mon_anom)
-              aice_sh_sum_feb_obs_min = min(aice_sh_sum_feb)
-              aice_sh_sum_feb_obs_max = max(aice_sh_sum_feb)
-              aice_sh_sum_mar_obs_min = min(aice_sh_sum_mar)
-              aice_sh_sum_mar_obs_max = max(aice_sh_sum_mar)
-              aice_sh_sum_sep_obs_min = min(aice_sh_sum_sep)
-              aice_sh_sum_sep_obs_max = max(aice_sh_sum_sep)
-              aice_sh_obs_djf = aice_sh_sum_djf
-              aice_sh_obs_mam = aice_sh_sum_mam
-              aice_sh_obs_jja = aice_sh_sum_jja
-              aice_sh_obs_son = aice_sh_sum_son
-              aice_sh_obs_ann = aice_sh_sum_ann
-              aice_sh_obs_mon = aice_sh_sum_mon
-              aice_sh_obs_mon_anom = aice_sh_sum_mon_anom
-              aice_sh_obs_feb = aice_sh_sum_feb
-              aice_sh_obs_mar = aice_sh_sum_mar
-              aice_sh_obs_sep = aice_sh_sum_sep
-              aice_sh_obs_climo = aice_sh_sum_climo
+              aice_sh_ext_djf_obs_min = min(aice_sh_ext_djf)
+              aice_sh_ext_djf_obs_max = max(aice_sh_ext_djf)
+              aice_sh_ext_mam_obs_min = min(aice_sh_ext_mam)
+              aice_sh_ext_mam_obs_max = max(aice_sh_ext_mam)
+              aice_sh_ext_jja_obs_min = min(aice_sh_ext_jja)
+              aice_sh_ext_jja_obs_max = max(aice_sh_ext_jja)
+              aice_sh_ext_son_obs_min = min(aice_sh_ext_son)
+              aice_sh_ext_son_obs_max = max(aice_sh_ext_son)
+              aice_sh_ext_ann_obs_min = min(aice_sh_ext_ann)
+              aice_sh_ext_ann_obs_max = max(aice_sh_ext_ann)
+              aice_sh_ext_mon_obs_min = min(aice_sh_ext_mon)
+              aice_sh_ext_mon_obs_max = max(aice_sh_ext_mon)
+              aice_sh_ext_mon_anom_obs_min = min(aice_sh_ext_mon_anom)
+              aice_sh_ext_mon_anom_obs_max = max(aice_sh_ext_mon_anom)
+              aice_sh_ext_feb_obs_min = min(aice_sh_ext_feb)
+              aice_sh_ext_feb_obs_max = max(aice_sh_ext_feb)
+              aice_sh_ext_mar_obs_min = min(aice_sh_ext_mar)
+              aice_sh_ext_mar_obs_max = max(aice_sh_ext_mar)
+              aice_sh_ext_sep_obs_min = min(aice_sh_ext_sep)
+              aice_sh_ext_sep_obs_max = max(aice_sh_ext_sep)
+              aice_sh_obs_djf = aice_sh_ext_djf
+              aice_sh_obs_mam = aice_sh_ext_mam
+              aice_sh_obs_jja = aice_sh_ext_jja
+              aice_sh_obs_son = aice_sh_ext_son
+              aice_sh_obs_ann = aice_sh_ext_ann
+              aice_sh_obs_mon = aice_sh_ext_mon
+              aice_sh_obs_mon_anom = aice_sh_ext_mon_anom
+              aice_sh_obs_feb = aice_sh_ext_feb
+              aice_sh_obs_mar = aice_sh_ext_mar
+              aice_sh_obs_sep = aice_sh_ext_sep
+              aice_sh_obs_climo = aice_sh_ext_climo
            end if
 
            xyres_c@gsnLeftString = syear_sh(ee)+"-"+eyear_sh(ee)  
            xyres_c@gsnCenterString = names_sh(ee)  
-           xyres_c@gsnRightString = "("+str_sub_str(str_sub_str(aice_sh_sum_climo@units,"m2","m~S~2~N~"),"10^12","10~S~12~N~")+")"
+           xyres_c@gsnRightString = "("+str_sub_str(str_sub_str(aice_sh_ext_climo@units,"m2","m~S~2~N~"),"10^12","10~S~12~N~")+")"
            if (ee.eq.0) then
-              plot_iceext_sh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),aice_sh_sum_climo,xyres_c)
+              plot_iceext_sh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),aice_sh_ext_climo,xyres_c)
            end if    
            if (ee.ge.1.) then
               if (isvar("aice_sh_obs_climo")) then
                  tarr = new((/2,12/),float)
-                 tarr(0,:) = (/ tofloat(aice_sh_sum_climo) /)
+                 tarr(0,:) = (/ tofloat(aice_sh_ext_climo) /)
                  tarr(1,:) = (/ tofloat(aice_sh_obs_climo) /)
                  plot_iceext_sh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),tarr,xyres_c)
                  delete(tarr)
               else
-                 plot_iceext_sh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),aice_sh_sum_climo,xyres_c)
+                 plot_iceext_sh_climo(ee) = gsn_csm_xy(wks_iceext_mon,ispan(1,12,1),aice_sh_ext_climo,xyres_c)
               end if
            end if
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_djf_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_djf),aice_sh_sum_djf_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_djf),aice_sh_sum_djf_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_djf_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_djf),aice_sh_ext_djf_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_djf),aice_sh_ext_djf_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_djf)-1,1),aice_sh_sum_djf,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_djf@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_djf(ee)     = gsn_csm_xy(wks_iceext_djf,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_sum_djf,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_djf)-1,1),aice_sh_ext_djf,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_djf@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_djf(ee)     = gsn_csm_xy(wks_iceext_djf,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_ext_djf,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_djf")) then
               plot_iceext_sh_obs_djf = gsn_csm_xy(wks_iceext_djf,ispan(syear_sh(0),eyear_sh(0),1),aice_sh_obs_djf,xyres2)
               overlay(plot_iceext_sh_djf(ee),plot_iceext_sh_obs_djf)
            end if
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_mam_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_mam),aice_sh_sum_mam_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_mam),aice_sh_sum_mam_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_mam_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_mam),aice_sh_ext_mam_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_mam),aice_sh_ext_mam_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_mam)-1,1),aice_sh_sum_mam,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_mam@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_mam(ee)     = gsn_csm_xy(wks_iceext_mam,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_sum_mam,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_mam)-1,1),aice_sh_ext_mam,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_mam@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_mam(ee)     = gsn_csm_xy(wks_iceext_mam,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_ext_mam,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_mam")) then
               plot_iceext_sh_obs_mam = gsn_csm_xy(wks_iceext_mam,ispan(syear_sh(0),eyear_sh(0),1),aice_sh_obs_mam,xyres2)
               overlay(plot_iceext_sh_mam(ee),plot_iceext_sh_obs_mam)
            end if      
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_jja_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_jja),aice_sh_sum_jja_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_jja),aice_sh_sum_jja_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_jja_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_jja),aice_sh_ext_jja_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_jja),aice_sh_ext_jja_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_jja)-1,1),aice_sh_sum_jja,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_jja@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_jja(ee)     = gsn_csm_xy(wks_iceext_jja,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_sum_jja,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_jja)-1,1),aice_sh_ext_jja,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_jja@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_jja(ee)     = gsn_csm_xy(wks_iceext_jja,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_ext_jja,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_jja")) then
               plot_iceext_sh_obs_jja = gsn_csm_xy(wks_iceext_jja,ispan(syear_sh(0),eyear_sh(0),1),aice_sh_obs_jja,xyres2)
               overlay(plot_iceext_sh_jja(ee),plot_iceext_sh_obs_jja)
            end if
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_son_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_son),aice_sh_sum_son_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_son),aice_sh_sum_son_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_son_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_son),aice_sh_ext_son_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_son),aice_sh_ext_son_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_son)-1,1),aice_sh_sum_son,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_son@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_son(ee)     = gsn_csm_xy(wks_iceext_son,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_sum_son,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_son)-1,1),aice_sh_ext_son,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_son@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_son(ee)     = gsn_csm_xy(wks_iceext_son,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_ext_son,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_son")) then
               plot_iceext_sh_obs_son = gsn_csm_xy(wks_iceext_son,ispan(syear_sh(0),eyear_sh(0),1),aice_sh_obs_son,xyres2)
               overlay(plot_iceext_sh_son(ee),plot_iceext_sh_obs_son)
            end if
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_ann_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_ann),aice_sh_sum_ann_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_ann),aice_sh_sum_ann_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_ann_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_ann),aice_sh_ext_ann_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_ann),aice_sh_ext_ann_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_ann)-1,1),aice_sh_sum_ann,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_ann@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_ann(ee)     = gsn_csm_xy(wks_iceext_ann,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_sum_ann,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_ann)-1,1),aice_sh_ext_ann,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_ann@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_ann(ee)     = gsn_csm_xy(wks_iceext_ann,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_ext_ann,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_ann")) then
               plot_iceext_sh_obs_ann = gsn_csm_xy(wks_iceext_ann,ispan(syear_sh(0),eyear_sh(0),1),aice_sh_obs_ann,xyres2)
               overlay(plot_iceext_sh_ann(ee),plot_iceext_sh_obs_ann)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_feb_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_feb),aice_sh_sum_feb_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_feb),aice_sh_sum_feb_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_feb_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_feb),aice_sh_ext_feb_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_feb),aice_sh_ext_feb_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_feb)-1,1),aice_sh_sum_feb,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_feb@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_feb(ee)     = gsn_csm_xy(wks_iceext_febmar,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_sum_feb,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_feb)-1,1),aice_sh_ext_feb,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_feb@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_feb(ee)     = gsn_csm_xy(wks_iceext_febmar,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_ext_feb,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_feb")) then
               plot_iceext_sh_obs_feb = gsn_csm_xy(wks_iceext_febmar,ispan(syear_sh(0),eyear_sh(0),1),aice_sh_obs_feb,xyres2)
               overlay(plot_iceext_sh_feb(ee),plot_iceext_sh_obs_feb)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_mar_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_mar),aice_sh_sum_mar_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_mar),aice_sh_sum_mar_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_mar_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_mar),aice_sh_ext_mar_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_mar),aice_sh_ext_mar_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_mar)-1,1),aice_sh_sum_mar,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_mar@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_mar(ee)     = gsn_csm_xy(wks_iceext_febmar,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_sum_mar,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_mar)-1,1),aice_sh_ext_mar,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_mar@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_mar(ee)     = gsn_csm_xy(wks_iceext_febmar,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_ext_mar,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_mar")) then
               plot_iceext_sh_obs_mar = gsn_csm_xy(wks_iceext_febmar,ispan(syear_sh(0),eyear_sh(0),1),aice_sh_obs_mar,xyres2)
               overlay(plot_iceext_sh_mar(ee),plot_iceext_sh_obs_mar)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_sep_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_sep),aice_sh_sum_sep_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_sep),aice_sh_sum_sep_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_sep_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_sep),aice_sh_ext_sep_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_sep),aice_sh_ext_sep_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_sep)-1,1),aice_sh_sum_sep,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_sep@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_sep(ee)     = gsn_csm_xy(wks_iceext_sep,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_sum_sep,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_sep)-1,1),aice_sh_ext_sep,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_sep@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_sep(ee)     = gsn_csm_xy(wks_iceext_sep,ispan(syear_sh(ee),eyear_sh(ee),1),aice_sh_ext_sep,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_sep")) then
               plot_iceext_sh_obs_sep = gsn_csm_xy(wks_iceext_sep,ispan(syear_sh(0),eyear_sh(0),1),aice_sh_obs_sep,xyres2)
               overlay(plot_iceext_sh_sep(ee),plot_iceext_sh_obs_sep)
            end if
            delete(tttt)
 
-           if (ee.ge.1.and.isvar("aice_sh_sum_mon_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_mon),aice_sh_sum_mon_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_mon),aice_sh_sum_mon_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_mon_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_mon),aice_sh_ext_mon_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_mon),aice_sh_ext_mon_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_mon)-1,1),aice_sh_sum_mon,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_mon@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_mon(ee)     = gsn_csm_xy(wks_iceext_mon,fspan(syear_sh(ee),eyear_sh(ee)+.91667,dimsizes(aice_sh_sum_mon)),aice_sh_sum_mon,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_mon)-1,1),aice_sh_ext_mon,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_mon@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_mon(ee)     = gsn_csm_xy(wks_iceext_mon,fspan(syear_sh(ee),eyear_sh(ee)+.91667,dimsizes(aice_sh_ext_mon)),aice_sh_ext_mon,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_mon")) then
               plot_iceext_sh_obs_mon = gsn_csm_xy(wks_iceext_mon,fspan(syear_sh(0),eyear_sh(0)+.91667,dimsizes(aice_sh_obs_mon)),aice_sh_obs_mon,xyres2)
               overlay(plot_iceext_sh_mon(ee),plot_iceext_sh_obs_mon)
            end if
            delete(tttt)
          
-           if (ee.ge.1.and.isvar("aice_sh_sum_mon_anom_obs_min")) then
-              xyres@trYMinF = min((/min(aice_sh_sum_mon_anom),aice_sh_sum_mon_anom_obs_min/))-1
-              xyres@trYMaxF = max((/max(aice_sh_sum_mon_anom),aice_sh_sum_mon_anom_obs_max/))+1
+           if (ee.ge.1.and.isvar("aice_sh_ext_mon_anom_obs_min")) then
+              xyres@trYMinF = min((/min(aice_sh_ext_mon_anom),aice_sh_ext_mon_anom_obs_min/))-1
+              xyres@trYMaxF = max((/max(aice_sh_ext_mon_anom),aice_sh_ext_mon_anom_obs_max/))+1
               xyres2@trYMinF = xyres@trYMinF
               xyres2@trYMaxF = xyres@trYMaxF
            end if
-           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_sum_mon_anom)-1,1),aice_sh_sum_mon_anom,False,True) 
-           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_sum_mon_anom@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
-           plot_iceext_sh_mon_anom(ee)     = gsn_csm_xy(wks_iceext_mon,fspan(syear_sh(ee),eyear_sh(ee)+.91667,dimsizes(aice_sh_sum_mon_anom)),aice_sh_sum_mon_anom,xyres)
+           tttt = dtrend_msg(ispan(0,dimsizes(aice_sh_ext_mon_anom)-1,1),aice_sh_ext_mon_anom,False,True) 
+           xyres@gsnRightString = str_sub_str(str_sub_str(decimalPlaces(tttt@slope*nyr_sh(ee),2,True)+aice_sh_ext_mon_anom@units,"m2","m~S~2~N~"),"10^12"," 10~S~12~N~")
+           plot_iceext_sh_mon_anom(ee)     = gsn_csm_xy(wks_iceext_mon,fspan(syear_sh(ee),eyear_sh(ee)+.91667,dimsizes(aice_sh_ext_mon_anom)),aice_sh_ext_mon_anom,xyres)
            if (ee.ge.1.and.isvar("aice_sh_obs_mon_anom")) then
               plot_iceext_sh_obs_mon_anom = gsn_csm_xy(wks_iceext_mon,fspan(syear_sh(0),eyear_sh(0)+.91667,dimsizes(aice_sh_obs_mon_anom)),aice_sh_obs_mon_anom,xyres2)
               overlay(plot_iceext_sh_mon_anom(ee),plot_iceext_sh_obs_mon_anom)
            end if
 
-           delete([/aice_sh_sum_djf,aice_sh_sum_mam,aice_sh_sum_jja,aice_sh_sum_son,aice_sh_sum_ann,aice_sh_sum_feb,aice_sh_sum_mar,aice_sh_sum_sep,aice_sh_sum_mon,aice_sh_sum_mon_anom,tttt/])
+           delete([/aice_sh_ext_djf,aice_sh_ext_mam,aice_sh_ext_jja,aice_sh_ext_son,aice_sh_ext_ann,aice_sh_ext_feb,aice_sh_ext_mar,aice_sh_ext_sep,aice_sh_ext_mon,aice_sh_ext_mon_anom,tttt/])
         end if
      end if
      delete([/res,xyres,xyres2,xyres_c,ph_s/])

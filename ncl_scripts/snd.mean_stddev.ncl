@@ -113,14 +113,29 @@ begin
               temp_arr = sndT
               delete(temp_arr&time)
               temp_arr&time = cd_calendar(sndT&time,-1)
+              climo_nyrs=min((/CLIMO_EYEAR-CLIMO_SYEAR,dimsizes(temp_arr&time)/12-1/))
+              delete(sndT)
               if (CLIMO_SYEAR.lt.0) then
-                 climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+                 sndT = rmMonAnnCycTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
               else
-                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
+                 sndT = rmMonAnnCycTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
               end if   
               delete(temp_arr)
-              sndT   = calcMonAnomTLL(sndT,climo) 
-              delete(climo)
+           end if
+        else
+           if (OPT_CLIMO.ne."Full") then
+              check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = sndT
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(sndT&time,-1)
+              climo_nyrs=min((/CLIMO_EYEAR-CLIMO_SYEAR,dimsizes(temp_arr&time)/12-1/))
+              delete(sndT)
+              if (CLIMO_SYEAR.lt.0) then
+                 sndT = temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:)       
+              else
+                 sndT = temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:)                 
+              end if
+              delete(temp_arr)
            end if
         end if         
         snd_seas = runave_n_Wrap(sndT,3,0,0)
@@ -137,11 +152,20 @@ begin
            snd_mean_ann = dim_avg_n_Wrap(snd_ann(5::12,:,:),0)
         end if
         if (ff.eq.1) then     
-           snd_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_seas(0::12,:,:),False,False,0),0)
-           snd_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_seas(3::12,:,:),False,False,0),0)
-           snd_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_seas(6::12,:,:),False,False,0),0)
-           snd_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_seas(9::12,:,:),False,False,0),0)
-           snd_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_ann(5::12,:,:),False,False,0),0)
+           if isvar("climo_nyrs") then
+             snd_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),snd_seas(0::12,:,:),False,False,0),0)
+             snd_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),snd_seas(3::12,:,:),False,False,0),0)
+             snd_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),snd_seas(6::12,:,:),False,False,0),0)
+             snd_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),snd_seas(9::12,:,:),False,False,0),0)
+             snd_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),snd_ann(5::12,:,:),False,False,0),0)
+             delete(climo_nyrs)   
+           else
+             snd_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_seas(0::12,:,:),False,False,0),0)
+             snd_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_seas(3::12,:,:),False,False,0),0)
+             snd_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_seas(6::12,:,:),False,False,0),0)
+             snd_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_seas(9::12,:,:),False,False,0),0)
+             snd_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),snd_ann(5::12,:,:),False,False,0),0)
+           end if
         end if
         delete([/snd_seas,snd_ann/])
      end do
