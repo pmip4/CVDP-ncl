@@ -104,21 +104,45 @@ begin
               temp_arr = tasT
               delete(temp_arr&time)
               temp_arr&time = cd_calendar(tasT&time,-1)
+              climo_nyrs=min((/CLIMO_EYEAR-CLIMO_SYEAR,dimsizes(temp_arr&time)/12-1/))
+              delete(tasT)
               if (CLIMO_SYEAR.lt.0) then
-                 climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+                 tasT = rmMonAnnCycTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
               else
-                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
+                 tasT = rmMonAnnCycTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
               end if
               delete(temp_arr)
-              tasT   = calcMonAnomTLL(tasT,climo) 
-              delete(climo)
+           end if
+        else
+           if (OPT_CLIMO.ne."Full") then
+              check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = tasT
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(tasT&time,-1)
+              climo_nyrs=min((/CLIMO_EYEAR-CLIMO_SYEAR,dimsizes(temp_arr&time)/12-1/))
+              delete(tasT)
+              if (CLIMO_SYEAR.lt.0) then
+                 tasT = temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:)       
+              else
+                 tasT = temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:)                 
+              end if
+              delete(temp_arr)
            end if
         end if        
         tas_seas = runave_n_Wrap(tasT,3,0,0)
         tas_seas(0,:,:) = (/ dim_avg_n(tasT(:1,:,:),0) /)
         tas_seas(dimsizes(tasT&time)-1,:,:) = (/ dim_avg_n(tasT(dimsizes(tasT&time)-2:,:,:),0) /)
         tas_ann = runave_n_Wrap(tasT,12,0,0)
+        ds=dimsizes(tasT)
+        tas_4d = reshape(tasT,(/ds(0)/12,12,ds(1),ds(2)/))
+        mtco = tas_ann(5::12,:,:)
+        mtwa = tas_ann(5::12,:,:)
+        seasonality = tas_ann(5::12,:,:)
+        mtco = (/dim_min_n(tas_4d,1)/) 
+        mtwa = (/dim_max_n(tas_4d,1)/) 
+        seasonality = (/mtwa-mtco/)
         delete(tasT)
+        delete([/ds,tas_4d/])
         
         if (ff.eq.0) then
            tas_mean_djf = dim_avg_n_Wrap(tas_seas(0::12,:,:),0)
@@ -126,13 +150,31 @@ begin
            tas_mean_jja = dim_avg_n_Wrap(tas_seas(6::12,:,:),0)
            tas_mean_son = dim_avg_n_Wrap(tas_seas(9::12,:,:),0)
            tas_mean_ann = dim_avg_n_Wrap(tas_ann(5::12,:,:),0)
+           mtco_mean = dim_avg_n_Wrap(mtco,0)
+           mtwa_mean = dim_avg_n_Wrap(mtwa,0)
+           seasonality_mean = dim_avg_n_Wrap(seasonality,0)
         end if
         if (ff.eq.1) then     
-           tas_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(0::12,:,:),False,False,0),0)
-           tas_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(3::12,:,:),False,False,0),0)
-           tas_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(6::12,:,:),False,False,0),0)
-           tas_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(9::12,:,:),False,False,0),0)
-           tas_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_ann(5::12,:,:),False,False,0),0)
+           if isvar("climo_nyrs") then
+             tas_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(0::12,:,:),False,False,0),0)
+             tas_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(3::12,:,:),False,False,0),0)
+             tas_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(6::12,:,:),False,False,0),0)
+             tas_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(9::12,:,:),False,False,0),0)
+             tas_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_ann(5::12,:,:),False,False,0),0)
+             mtco_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),mtco,False,False,0),0)
+             mtwa_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),mtwa,False,False,0),0)
+             seasonality_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),seasonality,False,False,0),0)
+             delete(climo_nyrs)   
+           else
+             tas_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(0::12,:,:),False,False,0),0)
+             tas_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(3::12,:,:),False,False,0),0)
+             tas_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(6::12,:,:),False,False,0),0)
+             tas_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(9::12,:,:),False,False,0),0)
+             tas_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_ann(5::12,:,:),False,False,0),0)
+             mtco_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),mtco,False,False,0),0)
+             mtwa_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),mtwa,False,False,0),0)
+             seasonality_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),seasonality,False,False,0),0)
+           end if
         end if
         delete([/tas_seas,tas_ann/])
      end do
@@ -142,6 +184,9 @@ begin
      copy_VarMeta(tas_mean_jja,tas_sd_jja)
      copy_VarMeta(tas_mean_son,tas_sd_son)
      copy_VarMeta(tas_mean_ann,tas_sd_ann)
+     copy_VarMeta(mtco_mean,mtco_sd)
+     copy_VarMeta(mtwa_mean,mtwa_sd)
+     copy_VarMeta(seasonality_mean,seasonality_sd)
      
      if (OUTPUT_DATA.eq."True") then
         modname = str_sub_str(names(ee)," ","_")
@@ -179,9 +224,18 @@ begin
         z->tas_spatialstddev_jja     = set_varAtts(tas_sd_jja,"tas standard deviation (JJA)","","")
         z->tas_spatialstddev_son     = set_varAtts(tas_sd_son,"tas standard deviation (SON)","","")
         z->tas_spatialstddev_ann     = set_varAtts(tas_sd_ann,"tas standard deviation (annual)","","")
+
+        z->tas_coldestmonth     = set_varAtts(mtco_mean,"mean temperature of the coldest month (average)","","")
+        z->tas_coldestmonth_stddev     = set_varAtts(mtco_sd,"mean temperature of the coldest month (standard deviation)","","")
+        z->tas_warmestmonth     = set_varAtts(mtwa_mean,"mean temperature of the warmest month (average)","","")
+        z->tas_warmestmonth_stddev     = set_varAtts(mtwa_sd,"mean temperature of the warmest month (standard deviation)","","")
+        z->tas_seasonality     = set_varAtts(seasonality_mean,"annual range in temperature (warmest-coldest, average)","","")
+        z->tas_seasonality_stddev     = set_varAtts(seasonality_sd,"annual range in temperature (warmest-coldest, interannual standard deviation)","","")
         delete(z)
      end if
-     
+     delete([/mtco,mtco_mean,mtco_sd,mtwa,mtwa_mean,mtwa_sd,seasonality_mean,seasonality_sd,seasonality/])
+
+
 ;==========================================================================================
      res = True
      res@mpProjection = "WinkelTripel"

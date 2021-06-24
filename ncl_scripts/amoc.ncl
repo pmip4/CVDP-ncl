@@ -20,7 +20,12 @@ begin
   CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
   OUTPUT_TYPE      = getenv("OUTPUT_TYPE") 
   COLORMAP         = getenv("COLORMAP")
-  
+
+  AMOC_30N=True ;Added by Chris Brierley. Really needs to controlled by a flag in the driver.ncl
+  if AMOC_30N then
+   print("amoc: Calculating AMOC at 30oN rather than a principal component")
+  end if
+
   nsim = numAsciiRow("namelist_byvar/namelist_moc")
   na = asciiread("namelist_byvar/namelist_moc",(/nsim/),"string")
   names = new(nsim,"string")
@@ -136,7 +141,9 @@ begin
 ;-----------------------------------------------------------------------------------         
      moc_ann = runave_n_Wrap(mocT,12,0,0)                             
      moc_mean_ann = dim_avg_n_Wrap(moc_ann(5::12,:,:),0)
-     delete(moc_ann)     
+     if .not.AMOC_30N then
+        delete(moc_ann)     
+     end if
 
      if (OPT_CLIMO.eq."Full") then
         mocT = rmMonAnnCycTLL(mocT)
@@ -161,94 +168,105 @@ begin
 
      moc_sd_ann = where(moc_sd_ann.lt.0.001,moc_sd_ann@_FillValue,moc_sd_ann)
      moc_mean_ann = where(ismissing(moc_sd_ann),moc_mean_ann@_FillValue,moc_mean_ann) 
-;-----------------------------------------------------------------------------------
-;-----calculate AMOC EOF1
-;-----------------------------------------------------------------------------------     
      temp = runave_n_Wrap(mocT,12,0,0)   ; form annual averages
      amoc = temp(5::12,:,:)
      delete([/temp,mocT/])
-     
-     atl_begin = ind_nearest_coord (-33.0, lat, 0)          ; set missing values based on variance, and mask Atlantic south of 33S
-     vareps = 1.e-6
-     amocvar = conform(amoc,dim_variance_n_Wrap(amoc,0),(/1,2/))
-     amoc@_FillValue = 1.e20
-     amoc(:,:,0:atl_begin-1) = amoc@_FillValue
-     amoc = where(amocvar.lt.vareps,amoc@_FillValue,amoc)
-     delete(amocvar)     
 
-     dlat = lat           ; Compute latitudinal weights (in meters)
-     rEarth = 6.37122e8 		; Earth radius in m
-     do iy=0,ny-1
-        if (iy.gt.0.and.iy.lt.ny-1) then
-           dy0 = (lat(iy)-lat(iy-1))/2.0
-           dy1 = (lat(iy+1)-lat(iy))/2.0
-           dlat(iy) = (dy0+dy1)*rEarth
-           delete(dy0)
-           delete(dy1)
-        end if
-        if (iy.eq.0) then
-           dy1 = (lat(iy+1)-lat(iy))/2.0
-           dlat(iy) = (2.*dy1)*rEarth
-           delete(dy1)
-        end if
-        if (iy.eq.ny-1) then
-           dy0 = (lat(iy)-lat(iy-1))/2.0
-           dlat(iy) = (2.*dy0)*rEarth
-           delete(dy0)
-        end if
-     end do
-    
-     dz = lev        ; compute vertical weights (in meters)
-     do iz=0,nz-1
-        if (iz.gt.0.and.iz.lt.nz-1) then
-           dz(iz) = (lev(iz)-lev(iz-1))/2.0 + (lev(iz+1)-lev(iz))/2.0
-        end if
-        if (iz.eq.0) then
-           dz(iz) = (lev(iz+1)-lev(iz))/2.0
-        end if
-        if (iz.eq.nz-1) then
-           dz(iz) = (lev(iz)-lev(iz-1))/2.0
-        end if
-     end do
-     
-     test = dlat(0)*dz(0)
-     wgt    = new((/nz,ny/),typeof(test))      ; weight the data
-     delete(test)
-     do iz=0,nz-1
-        do iy=0,ny-1
-           wgt(iz,iy) = dlat(iy)*dz(iz)
-        end do
-     end do
-     amocW   = amoc*conform(amoc, wgt, (/1,2/))  ; same units as "amoc"
-     delete(wgt)
-     copy_VarMeta(amoc,amocW)
-     amocW@long_name = "area weighted "+amoc@long_name
-
-     workeof    = eofunc_Wrap(amocW(lev|:,lat|:,time|:), 3, 75)
-     workeof_ts = eofunc_ts_Wrap (amocW(lev|:,lat|:,time|:), workeof, False)
-     delete(amocW)
-     amoc_pc_ann = dim_standardize(workeof_ts(0,:),0)
-     moc_reg_ann = amoc(0,:,:)
-     moc_reg_ann = (/ regCoef(amoc_pc_ann,amoc(lev|:,lat|:,time|:)) /)
-     sig_pcv = eofunc_north2(workeof@pcvar,dimsizes(amoc_pc_ann),False)
-     if (sig_pcv(0)) then    ; if True then significant
-        moc_reg_ann@pcvar = tofloat(sprintf("%4.1f", workeof@pcvar(0)))+"%*"
+     if AMOC_30N then
+        amoc_ts_ann = dim_max_n_Wrap(moc_ann(5::12,{500:},{29.:31.}),(/1,2/))
+        moc_reg_ann = amoc(0,:,:)
+        moc_reg_ann = (/ regCoef(amoc_ts_ann,amoc(lev|:,lat|:,time|:)) /)
+        moc_reg_ann@pcvar = "Mean AMOC 3ON ="+tofloat(sprintf("%4.1f", avg(amoc_ts_ann)))+"Sv"
+        delete(moc_ann)     
      else
-        moc_reg_ann@pcvar = tofloat(sprintf("%4.1f", workeof@pcvar(0)))+"%"
-     end if
-     delete(sig_pcv)
-
-     delete([/atl_begin,lat,lev,dz,dlat,amoc,workeof,workeof_ts,ny,nz/])
-     if (max(moc_reg_ann&lev).ge.2000) then
-        if (.not.ismissing(moc_reg_ann({2000.},{38}))) then
-           if (moc_reg_ann({2000.},{38}).lt.0) then   ; arbitrary attempt to make all plots have the same sign..
-              moc_reg_ann = moc_reg_ann*-1.
-              amoc_pc_ann = amoc_pc_ann*-1.
+        ;-----------------------------------------------------------------------------------
+        ;-----calculate AMOC EOF1
+        ;-----------------------------------------------------------------------------------     
+     
+        atl_begin = ind_nearest_coord (-33.0, lat, 0)          ; set missing values based on variance, and mask Atlantic south of 33S
+        vareps = 1.e-6
+        amocvar = conform(amoc,dim_variance_n_Wrap(amoc,0),(/1,2/))
+        amoc@_FillValue = 1.e20
+        amoc(:,:,0:atl_begin-1) = amoc@_FillValue
+        amoc = where(amocvar.lt.vareps,amoc@_FillValue,amoc)
+        delete(amocvar)     
+   
+        dlat = lat           ; Compute latitudinal weights (in meters)
+        rEarth = 6.37122e8 		; Earth radius in m
+        do iy=0,ny-1
+           if (iy.gt.0.and.iy.lt.ny-1) then
+              dy0 = (lat(iy)-lat(iy-1))/2.0
+              dy1 = (lat(iy+1)-lat(iy))/2.0
+              dlat(iy) = (dy0+dy1)*rEarth
+              delete(dy0)
+              delete(dy1)
+           end if
+           if (iy.eq.0) then
+              dy1 = (lat(iy+1)-lat(iy))/2.0
+              dlat(iy) = (2.*dy1)*rEarth
+              delete(dy1)
+           end if
+           if (iy.eq.ny-1) then
+              dy0 = (lat(iy)-lat(iy-1))/2.0
+              dlat(iy) = (2.*dy0)*rEarth
+              delete(dy0)
+           end if
+        end do
+       
+        dz = lev        ; compute vertical weights (in meters)
+        do iz=0,nz-1
+           if (iz.gt.0.and.iz.lt.nz-1) then
+              dz(iz) = (lev(iz)-lev(iz-1))/2.0 + (lev(iz+1)-lev(iz))/2.0
+           end if
+           if (iz.eq.0) then
+              dz(iz) = (lev(iz+1)-lev(iz))/2.0
+           end if
+           if (iz.eq.nz-1) then
+              dz(iz) = (lev(iz)-lev(iz-1))/2.0
+           end if
+        end do
+     
+        test = dlat(0)*dz(0)
+        wgt    = new((/nz,ny/),typeof(test))      ; weight the data
+        delete(test)
+        do iz=0,nz-1
+           do iy=0,ny-1
+              wgt(iz,iy) = dlat(iy)*dz(iz)
+           end do
+        end do
+        amocW   = amoc*conform(amoc, wgt, (/1,2/))  ; same units as "amoc"
+        delete(wgt)
+        copy_VarMeta(amoc,amocW)
+        amocW@long_name = "area weighted "+amoc@long_name
+   
+        workeof    = eofunc_Wrap(amocW(lev|:,lat|:,time|:), 3, 75)
+        workeof_ts = eofunc_ts_Wrap (amocW(lev|:,lat|:,time|:), workeof, False)
+        delete(amocW)
+        amoc_ts_ann = dim_standardize(workeof_ts(0,:),0)
+        moc_reg_ann = amoc(0,:,:)
+        moc_reg_ann = (/ regCoef(amoc_ts_ann,amoc(lev|:,lat|:,time|:)) /)
+        sig_pcv = eofunc_north2(workeof@pcvar,dimsizes(amoc_ts_ann),False)
+        if (sig_pcv(0)) then    ; if True then significant
+           moc_reg_ann@pcvar = tofloat(sprintf("%4.1f", workeof@pcvar(0)))+"%*"
+        else
+           moc_reg_ann@pcvar = tofloat(sprintf("%4.1f", workeof@pcvar(0)))+"%"
+        end if
+        delete(sig_pcv)
+   
+        delete([/atl_begin,dz,dlat,workeof,workeof_ts/])
+        if (max(moc_reg_ann&lev).ge.2000) then
+           if (.not.ismissing(moc_reg_ann({2000.},{38}))) then
+              if (moc_reg_ann({2000.},{38}).lt.0) then   ; arbitrary attempt to make all plots have the same sign..
+                 moc_reg_ann = moc_reg_ann*-1.
+                 amoc_ts_ann = amoc_ts_ann*-1.
+              end if
            end if
         end if
-     end if
+      end if
+      delete([/lat,lev,amoc,ny,nz/])
+
 ;----------------------------------------------------------------------------------------     
-     iopt = 0                         ; calculate spectra of AMOC PC1
+     iopt = 0                         ; calculate spectra of AMOC timeseries
      jave = (1*nyr(ee))/100
      if (jave.eq.0) then
        jave = 1
@@ -258,14 +276,14 @@ begin
      pct = 0.1     
      spectra_mvf = False        ; missing value flag for amoc
      spectra_mvf_obs = True     ; missing value flag for obs amoc
-     if (any(ismissing(amoc_pc_ann))) then
+     if (any(ismissing(amoc_ts_ann))) then
         print("Missing data detected for "+names(ee)+", not creating AMOC spectra")
         spectra_mvf = True
      else
         if (isfilepresent2("obs_moc").and.ee.eq.0) then
            spectra_mvf_obs = False   ; missing value flag for obs amoc
         end if
-        sdof = specx_anal(amoc_pc_ann,iopt,jave,pct)
+        sdof = specx_anal(amoc_ts_ann,iopt,jave,pct)
         splt1 = specx_ci(sdof,val1,val2)
         splt1!0 = "ncurves"
         splt1&ncurves = ispan(0,3,1)
@@ -329,7 +347,7 @@ begin
         delete([/temp,sst/])
 
         sst_reg_ann = sst_ann(0,:,:)                                                 ; SST regression onto AMOC PC1
-        sst_reg_ann = (/ regCoef(amoc_pc_ann,sst_ann(lat|:,lon|:,time|:)) /)
+        sst_reg_ann = (/ regCoef(amoc_ts_ann,sst_ann(lat|:,lon|:,time|:)) /)
 
 ;        Compute AMO timeseries
         sst_ann = lonFlip(sst_ann)   ; orient longitudes from -180:180 (set to 0:360 in data_read_in function) for AMO calculation
@@ -383,7 +401,7 @@ begin
         delete([/temp,tas/])
 
         tas_reg_ann = tas_ann(0,:,:)                                                 ; TAS regression onto AMOC PC1
-        tas_reg_ann = (/ regCoef(amoc_pc_ann,tas_ann(lat|:,lon|:,time|:)) /)
+        tas_reg_ann = (/ regCoef(amoc_ts_ann,tas_ann(lat|:,lon|:,time|:)) /)
         delete(tas_ann)
      end if     
 ;---------------compute AMOC/AMO lead/lags----------------------------------------------------------------------------- 
@@ -397,16 +415,16 @@ begin
         nsigma = 1.
         twgt = filwgts_lanczos (nwt, ihp, fca, fcb, nsigma)
         AMO_wgt = wgt_runave_Wrap(AMO,twgt,0)
-        amoc_pc_ann_wgt = wgt_runave_Wrap(amoc_pc_ann,twgt,0)
+        amoc_ts_ann_wgt = wgt_runave_Wrap(amoc_ts_ann,twgt,0)
 
         mxlag = 15
-        x_Lead_y = esccr(amoc_pc_ann_wgt,AMO_wgt,mxlag)
-        y_Lead_x = esccr(AMO_wgt,amoc_pc_ann_wgt,mxlag)    ; switch the order of the series
+        x_Lead_y = esccr(amoc_ts_ann_wgt,AMO_wgt,mxlag)
+        y_Lead_x = esccr(AMO_wgt,amoc_ts_ann_wgt,mxlag)    ; switch the order of the series
      
         ccr = new ( 2*mxlag+1, float)    
         ccr(0:mxlag-1) = y_Lead_x(1:mxlag:-1)  ; "negative lag", -1 reverses order
         ccr(mxlag:)    = x_Lead_y(0:mxlag)     ; "positive lag"
-        delete([/x_Lead_y,y_Lead_x,AMO_wgt,amoc_pc_ann_wgt/])
+        delete([/x_Lead_y,y_Lead_x,AMO_wgt,amoc_ts_ann_wgt/])
      end if
      if (sstreg_plot_flag.eq.0) then
         delete(AMO)
@@ -454,17 +472,21 @@ begin
            z->amoc_amo_lag_cor = set_varAtts(ccr,"","1","")
            delete(time_lag_cor)
         end if
-        TIME = ispan(0,dimsizes(amoc_pc_ann)-1,1)
+        TIME = ispan(0,dimsizes(amoc_ts_ann)-1,1)
         TIME@units = "years since "+syear(ee)+"-01-15 00:00:00"
         TIME@long_name = "Time"
         TIME@standard_name = "time"
         TIME@calendar = "standard"
         TIME!0 = "TIME"
         TIME&TIME = TIME
-        amoc_pc_ann!0 = "TIME"
-        amoc_pc_ann&TIME = TIME
-        amoc_pc_ann@long_name = "AMOC pc1 timeseries (annual)"
-        z->amoc_timeseries_ann = set_varAtts(amoc_pc_ann,"","1","")
+        amoc_ts_ann!0 = "TIME"
+        amoc_ts_ann&TIME = TIME
+        if AMOC_30N then
+           amoc_ts_ann@long_name = "AMOC 30N timeseries (annual)"
+        else
+           amoc_ts_ann@long_name = "AMOC pc1 timeseries (annual)"
+        end if
+        z->amoc_timeseries_ann = set_varAtts(amoc_ts_ann,"","1","")
         lat_amoc = moc_reg_ann&lat
         lat_amoc!0 = "lat_amoc"
         lat_amoc&lat_amoc = lat_amoc
@@ -532,7 +554,11 @@ begin
            else
               z = addfile(fn,"w")
            end if
-           z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC PC1 (annual)","","") 
+           if AMOC_30N then
+              z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC 30N (annual)","","") 
+           else
+              z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC PC1 (annual)","","") 
+           end if
            delete(z)
         end if
      end if     
@@ -638,7 +664,11 @@ begin
      xyres@gsnDraw = False
      xyres@gsnFrame = False
      xyres@gsnXYBarChart = False
-     xyres@gsnYRefLine = 0.0
+     if AMOC_30N then
+        xyres@gsnYRefLine = avg(amoc_ts_ann)
+     else
+        xyres@gsnYRefLine = 0.0
+     end if 
      xyres@gsnYRefLineColor = "gray42"
      xyres@gsnAboveYRefLineColor = 185
      xyres@gsnBelowYRefLineColor = 35
@@ -673,8 +703,8 @@ begin
      xyres@trXMaxF = eyear(ee)+1.5
 
      xyres@gsnCenterString = names(ee)
-     plot_amoc_ts_ann(ee) = gsn_csm_xy(wks_amoc_ts,ispan(syear(ee),eyear(ee),1),amoc_pc_ann,xyres)  ; use standardized timeseries  
-     delete(amoc_pc_ann)
+     plot_amoc_ts_ann(ee) = gsn_csm_xy(wks_amoc_ts,ispan(syear(ee),eyear(ee),1),amoc_ts_ann,xyres)  ; use standardized timeseries  
+     delete(amoc_ts_ann)
      delete(xyres)
     
      pres = True
@@ -835,7 +865,7 @@ begin
      
      res2@gsnLeftString = "AMO leads"
      res2@gsnCenterString = names(ee)
-     res2@gsnRightString = "AMOC PC1 leads"
+     res2@gsnRightString = "AMOC leads"
      if (nyr(ee).ge.90.and.isvar("ccr")) then    ; need a minimum number of years to compute lead/lag correlations
         res2@trXMinF = mxlag*-1
         res2@trXMaxF = mxlag
@@ -911,19 +941,31 @@ begin
      panres2@gsnPanelScalePlotIndex = tt(0)
      delete(tt)
   end if
-  panres2@txString = "AMOC PC1 (Annual)"
+  if AMOC_30N then
+     panres2@txString = "AMOC 30N (Annual)"
+  else
+     panres2@txString = "AMOC PC1 (Annual)"
+  end if
   gsn_panel2(wks_amoc_ts,plot_amoc_ts_ann,(/nrow,ncol/),panres2)
   delete(wks_amoc_ts)
 
   if (isatt(panres2,"gsnPanelScalePlotIndex")) then
      delete(panres2@gsnPanelScalePlotIndex)
   end if
-  panres2@txString = "AMOC PC1 (Annual, detrended)"
+  if AMOC_30N then
+     panres2@txString = "AMOC 30N (Annual, detrended)"
+  else
+     panres2@txString = "AMOC PC1 (Annual, detrended)"
+  end if
   gsn_panel2(wks_amoc_powspec,plot_amoc_powspec_ann,(/nrow,ncol/),panres2)
   delete(wks_amoc_powspec)
 
 
-  panres2@txString = "AMO / AMOC PC1 Lag Correlation (Annual)"
+  if AMOC_30N then
+     panres2@txString = "AMO / AMOC 30N Lag Correlation (Annual)"
+  else
+     panres2@txString = "AMO / AMOC PC1 Lag Correlation (Annual)"
+  end if
   gsn_panel2(wks_amoc_amo,plot_amoc_amo_ann,(/nrow,ncol/),panres2)
   delete(wks_amoc_amo)
   delete(panres2)

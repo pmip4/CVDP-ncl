@@ -112,14 +112,29 @@ begin
               temp_arr = sstT
               delete(temp_arr&time)
               temp_arr&time = cd_calendar(sstT&time,-1)
+              climo_nyrs=min((/CLIMO_EYEAR-CLIMO_SYEAR,dimsizes(temp_arr&time)/12-1/))
+              delete(sstT)
               if (CLIMO_SYEAR.lt.0) then
-                 climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+                 sstT = rmMonAnnCycTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
               else
-                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
+                 sstT = rmMonAnnCycTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
               end if
               delete(temp_arr)
-              sstT   = calcMonAnomTLL(sstT,climo) 
-              delete(climo)
+           end if
+        else
+           if (OPT_CLIMO.ne."Full") then
+              check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = sstT
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(sstT&time,-1)
+              climo_nyrs=min((/CLIMO_EYEAR-CLIMO_SYEAR,dimsizes(temp_arr&time)/12-1/))
+              delete(sstT)
+              if (CLIMO_SYEAR.lt.0) then
+                 sstT = temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:)       
+              else
+                 sstT = temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:)                 
+              end if
+              delete(temp_arr)
            end if
         end if        
         sst_seas = runave_n_Wrap(sstT,3,0,0)
@@ -136,11 +151,20 @@ begin
            sst_mean_ann = dim_avg_n_Wrap(sst_ann(5::12,:,:),0)
         end if
         if (ff.eq.1) then     
-           sst_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_seas(0::12,:,:),False,False,0),0)
-           sst_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_seas(3::12,:,:),False,False,0),0)
-           sst_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_seas(6::12,:,:),False,False,0),0)
-           sst_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_seas(9::12,:,:),False,False,0),0)
-           sst_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_ann(5::12,:,:),False,False,0),0)
+           if isvar("climo_nyrs") then
+             sst_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),sst_seas(0::12,:,:),False,False,0),0)
+             sst_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),sst_seas(3::12,:,:),False,False,0),0)
+             sst_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),sst_seas(6::12,:,:),False,False,0),0)
+             sst_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),sst_seas(9::12,:,:),False,False,0),0)
+             sst_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),sst_ann(5::12,:,:),False,False,0),0)
+             delete(climo_nyrs)   
+           else
+             sst_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_seas(0::12,:,:),False,False,0),0)
+             sst_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_seas(3::12,:,:),False,False,0),0)
+             sst_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_seas(6::12,:,:),False,False,0),0)
+             sst_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_seas(9::12,:,:),False,False,0),0)
+             sst_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),sst_ann(5::12,:,:),False,False,0),0)
+           end if
         end if
         delete([/sst_seas,sst_ann/])
      end do
@@ -302,7 +326,7 @@ begin
         if (all(ismissing(patcor(hh,:,:)))) then
            finpr = finpr+sprintf(format2,9.99)+"/"+sprintf(format3,9.99)
         else
-           finpr = finpr+sprintf(format2,(pattern_cor(patcor(0,:,:),patcor(hh,:,:),clat,0)))+"/"+sprintf(format3,(wgt_arearmse(patcor(0,:,:),patcor(hh,:,:),clat,1.0,0)))
+           finpr = finpr+sprintf(format2,(pattern_cor(patcor(0,:,:),patcor(hh,:,:),clat,0)))+"/"+sprintf(format3,(dim_rmsd(ndtooned(NewCosWeight(patcor(0,:,:))),ndtooned(NewCosWeight(patcor(hh,:,:))))))
         end if
      end do
      if (dimsizes(tochar(line4)).ge.8190) then   ; system or fortran compiler limit
