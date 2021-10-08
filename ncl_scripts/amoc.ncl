@@ -457,7 +457,7 @@ begin
      
         temp = runave_n_Wrap(pr,12,0,0)   ; form annual averages
         pr_ann = temp(5::12,:,:)
-        delete([/temp,tas/])
+        delete([/temp,pr/])
 
         pr_reg_ann = pr_ann(0,:,:)                                                 ; PR regression onto AMOC PC1
         pr_reg_ann = (/ regCoef(amoc_ts_ann,pr_ann(lat|:,lon|:,time|:)) /)

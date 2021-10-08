@@ -58,7 +58,7 @@ begin
   txt(9) = "td.s2 {border-bottom: 4px double darkgray}"
   txt(10) = "CAPTION {text-align:left; font-size:14pt; font-weight:bold}"
   txt(11) = "</STYLE></HEAD><BODY>"
-  txt(12) = "<a href="+quote+"http://www2.geog.ucl.ac.uk/~ucfaccb/PMIPVarData/"+quote+"><img class=title src="+quote+"banner.png"+quote+" alt="+quote+"PMIP, UCL and NCAR banners"+quote+">"
+  txt(12) = "<a href="+quote+"http://www2.geog.ucl.ac.uk/~ucfaccb/PMIPVarData/"+quote+"><img class=title src="+quote+"banner.png"+quote+" alt="+quote+"PMIP, UCL and NCAR banners"+quote+"></a>"
   txt(13) = "<TABLE width='990' border=0 padding=0 cellpadding=0>"
   txt(14) = "<tr><td width='365' colspan=2><p class=btext><font class=s1><a href="+quote+"http://www2.geog.ucl.ac.uk/~ucfaccb/PMIPVarData/"+quote+">Return to PMIPVarData home</a> <br> <a href="+quote+"methodology.html"+quote+">Methodology and Definitions</a></font>"
   if (isfilepresent2(OUTDIR+"metrics.txt")) then
@@ -165,9 +165,10 @@ begin
   txt(45) = "<td>"+table_link_setup(OUTDIR,"amoc.sstreg.ann.png","SST Regressions")+"</td>"
   txt(46) = "<td>"+table_link_setup(OUTDIR,"amoc.tasreg.ann.png","TAS Regressions")+"</td></tr>"
   txt(47) = "<tr><td class=s2>"+table_link_setup(OUTDIR,"amoc.powspec.ann.png","Spectra")+"</td>"
-  txt(48) = "<td class=s2 colspan=2>"+table_link_setup(OUTDIR,"amoc_amo.leadlag.ann.png","AMO/AMOC Lag Correlations")+"</td></tr></table>" 
+  txt(48) = "<td class=s2>"+table_link_setup(OUTDIR,"amoc_amo.leadlag.ann.png","AMO/AMOC Lag Corr.")+"</td>" 
+  txt(49) = "<td class=s2>"+table_link_setup(OUTDIR,"amoc.prreg.ann.png","PR Regressions")+"</td></tr></table>" 
 
-  txt(49)=table_bottom_txt
+  txt(50)=table_bottom_txt
   ;Write out the cplsst table
   cplsst_txt=[/txt(ind(.not.ismissing(txt)))/]
   write_table(OUTDIR+"index.html","a",cplsst_txt,"%s")
