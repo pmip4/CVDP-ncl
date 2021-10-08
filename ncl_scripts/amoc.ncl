@@ -120,6 +120,7 @@ begin
      gsn_define_colormap(wks_amoc_powspec,"ncl_default")
      gsn_define_colormap(wks_amoc_sstreg,"ncl_default")
      gsn_define_colormap(wks_amoc_tasreg,"ncl_default")
+     gsn_define_colormap(wks_amoc_prreg,"MPL_BrBG")
      gsn_define_colormap(wks_amoc_amo,"ncl_default")
   end if
   if (COLORMAP.eq.1) then
