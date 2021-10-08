@@ -109,6 +109,7 @@ begin
   wks_amoc_powspec = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.powspec.ann")
   wks_amoc_sstreg  = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.sstreg.ann")
   wks_amoc_tasreg  = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.tasreg.ann")
+  wks_amoc_prreg  = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.prreg.ann")
   wks_amoc_amo     = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc_amo.leadlag.ann")
  
   if (COLORMAP.eq.0) then
@@ -129,6 +130,7 @@ begin
      gsn_define_colormap(wks_amoc_powspec,"cb_9step")
      gsn_define_colormap(wks_amoc_sstreg,"BlueDarkRed18")
      gsn_define_colormap(wks_amoc_tasreg,"BlueDarkRed18")
+     gsn_define_colormap(wks_amoc_prreg,"BrownBlue12")
      gsn_define_colormap(wks_amoc_amo,"ncl_default")
   end if 
   plot_mean_ann    = new(nsim,"graphic")   
@@ -138,6 +140,7 @@ begin
   plot_amoc_powspec_ann = new(nsim,"graphic") 
   plot_amoc_sstreg_ann  = new(nsim,"graphic") 
   plot_amoc_tasreg_ann  = new(nsim,"graphic") 
+  plot_amoc_prreg_ann  = new(nsim,"graphic")
   plot_amoc_amo_ann  = new(nsim,"graphic") 
   if (isfilepresent2("obs_moc")) then
      pspec_obs = new(nsim,"graphic")
@@ -925,6 +928,10 @@ begin
         plot_amoc_tasreg_ann(ee) = gsn_csm_contour_map(wks_amoc_tasreg,tas_reg_ann,res)
         delete(tas_reg_ann)
      end if
+     if (prreg_plot_flag.eq.0) then
+        plot_amoc_prreg_ann(ee) = gsn_csm_contour_map(wks_amoc_prreg,pr_reg_ann,res)
+        delete(pr_reg_ann)
+     end if
      delete(res)
      
      res2 = True
@@ -1015,6 +1022,10 @@ begin
   panres@txString = "AMOC TAS Regressions (Annual)"
   gsn_panel2(wks_amoc_tasreg,plot_amoc_tasreg_ann,(/nrow,ncol/),panres)
   delete(wks_amoc_tasreg)
+
+  panres@txString = "AMOC PR Regressions (Annual)"
+  gsn_panel2(wks_amoc_prreg,plot_amoc_prreg_ann,(/nrow,ncol/),panres)
+  delete(wks_amoc_prreg)
 
   panres@txString = "AMOC SST Regressions (Annual)"
   gsn_panel2(wks_amoc_sstreg,plot_amoc_sstreg_ann,(/nrow,ncol/),panres)
