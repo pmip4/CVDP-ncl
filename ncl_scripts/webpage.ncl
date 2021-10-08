@@ -114,7 +114,7 @@ begin
   write_table(OUTDIR+"index.html","a",stddev_txt,"%s")
   delete([/stddev_txt,txt/])
 
-  txt = new(50,"string")
+  txt = new(60,"string")
   txt(0) = table_top_txt
   txt(1) = "<CAPTION>Coupled Modes of Variability</CAPTION>"  
   txt(2) = "<tr><td class=s2 rowspan=5><b>ENSO</b></td>"
