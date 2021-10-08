@@ -561,6 +561,11 @@ begin
         moc_sd_ann&lat_amoc = lat_amoc
         z->amoc_mean_ann   = set_varAtts(moc_mean_ann,"AMOC mean (annual)","","") 
         z->amoc_stddev_ann = set_varAtts(moc_sd_ann,"AMOC standard deviation (annual)","","")
+        if AMOC_30N then
+           z->amoc_pattern_ann    = set_varAtts(moc_reg_ann,"AMOC regression onto timeseries of max at 30oN (annual)","Sv/Sv","") 
+        else
+           z->amoc_pattern_ann    = set_varAtts(moc_reg_ann,"AMOC regression onto AMOC principal component timeseries (annual)","","") 
+        end if
         z->amoc_pattern_ann    = set_varAtts(moc_reg_ann,"AMOC regression onto AMOC principal component timeseries (annual)","","") 
         delete([/modname,fn,TIME,lat_amoc/])
         delete(z)
@@ -588,7 +593,11 @@ begin
            else
               z = addfile(fn,"w")
            end if
-           z->amoc_sst_regression_ann = set_varAtts(sst_reg_ann,"sst regression onto AMOC principal component timeseries (annual)","","") 
+           if AMOC_30N then
+              z->amoc_sst_regression_ann = set_varAtts(tas_reg_ann,"sst regression onto AMOC 30N (annual)","oC/Sv","") 
+           else
+              z->amoc_sst_regression_ann = set_varAtts(sst_reg_ann,"sst regression onto AMOC principal component timeseries (annual)","","") 
+           end if
            delete(z)           
         end if
         if (tasreg_plot_flag.eq.0) then
@@ -615,7 +624,7 @@ begin
               z = addfile(fn,"w")
            end if
            if AMOC_30N then
-              z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC 30N (annual)","","") 
+              z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC 30N (annual)","oC/Sv","") 
            else
               z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC PC1 (annual)","","") 
            end if
@@ -645,7 +654,7 @@ begin
               z = addfile(fn,"w")
            end if
            if AMOC_30N then
-              z->amoc_pr_regression_ann = set_varAtts(pr_reg_ann,"pr regression onto AMOC 30N (annual)","","") 
+              z->amoc_pr_regression_ann = set_varAtts(pr_reg_ann,"pr regression onto AMOC 30N (annual)","mm/day/Sv","") 
            else
               z->amoc_pr_regression_ann = set_varAtts(pr_reg_ann,"pr regression onto AMOC PC1 (annual)","","") 
            end if
