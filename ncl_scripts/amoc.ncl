@@ -21,7 +21,7 @@ begin
   OUTPUT_TYPE      = getenv("OUTPUT_TYPE") 
   COLORMAP         = getenv("COLORMAP")
 
-  AMOC_30N=True ;Added by Chris Brierley. Really needs to controlled by a flag in the driver.ncl
+  AMOC_30N=True ;Added by Chris Brierley. Really ought be to controlled by a flag in driver.ncl
   if AMOC_30N then
    print("amoc: Calculating AMOC at 30oN rather than a principal component")
   end if
@@ -77,6 +77,23 @@ begin
   delete(na_ts)
   nyr_ts = eyear_ts-syear_ts+1   
 
+;---------PR Regressions coding-------------------------------------------------
+  nsim_pr = numAsciiRow("namelist_byvar/namelist_prect")
+  na_pr = asciiread("namelist_byvar/namelist_prect",(/nsim_pr/),"string")
+  names_pr = new(nsim_pr,"string")
+  paths_pr = new(nsim_pr,"string")
+  syear_pr = new(nsim_pr,"integer",-999)
+  eyear_pr = new(nsim_pr,"integer",-999)
+
+  do gg = 0,nsim_pr-1
+     names_pr(gg) = str_strip(str_get_field(na_pr(gg),1,delim))
+     paths_pr(gg) = str_strip(str_get_field(na_pr(gg),2,delim))
+     syear_pr(gg) = stringtointeger(str_strip(str_get_field(na_pr(gg),3,delim)))
+     eyear_pr(gg) = stringtointeger(str_strip(str_get_field(na_pr(gg),4,delim)))
+  end do
+  delete(na_pr)
+  nyr_pr = eyear_pr-syear_pr+1  
+
   pi=4.*atan(1.0)
   rad=(pi/180.)
 
@@ -92,6 +109,7 @@ begin
   wks_amoc_powspec = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.powspec.ann")
   wks_amoc_sstreg  = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.sstreg.ann")
   wks_amoc_tasreg  = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.tasreg.ann")
+  wks_amoc_prreg  = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.prreg.ann")
   wks_amoc_amo     = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc_amo.leadlag.ann")
  
   if (COLORMAP.eq.0) then
@@ -102,6 +120,7 @@ begin
      gsn_define_colormap(wks_amoc_powspec,"ncl_default")
      gsn_define_colormap(wks_amoc_sstreg,"ncl_default")
      gsn_define_colormap(wks_amoc_tasreg,"ncl_default")
+     gsn_define_colormap(wks_amoc_prreg,"MPL_BrBG")
      gsn_define_colormap(wks_amoc_amo,"ncl_default")
   end if
   if (COLORMAP.eq.1) then
@@ -112,6 +131,7 @@ begin
      gsn_define_colormap(wks_amoc_powspec,"cb_9step")
      gsn_define_colormap(wks_amoc_sstreg,"BlueDarkRed18")
      gsn_define_colormap(wks_amoc_tasreg,"BlueDarkRed18")
+     gsn_define_colormap(wks_amoc_prreg,"BrownBlue12")
      gsn_define_colormap(wks_amoc_amo,"ncl_default")
   end if 
   plot_mean_ann    = new(nsim,"graphic")   
@@ -121,6 +141,7 @@ begin
   plot_amoc_powspec_ann = new(nsim,"graphic") 
   plot_amoc_sstreg_ann  = new(nsim,"graphic") 
   plot_amoc_tasreg_ann  = new(nsim,"graphic") 
+  plot_amoc_prreg_ann  = new(nsim,"graphic")
   plot_amoc_amo_ann  = new(nsim,"graphic") 
   if (isfilepresent2("obs_moc")) then
      pspec_obs = new(nsim,"graphic")
@@ -404,6 +425,49 @@ begin
         tas_reg_ann = (/ regCoef(amoc_ts_ann,tas_ann(lat|:,lon|:,time|:)) /)
         delete(tas_ann)
      end if     
+
+;-------------------------------------------------------------------------------------------------------------
+     if (syear(ee).eq.syear_pr(ee)) then
+        if (eyear(ee).eq.eyear_pr(ee)) then
+;           print("Years match")
+           prreg_plot_flag = 0
+        else
+;           print("End years do not match, skipping precip. regressions in amoc.ncl.")
+           prreg_plot_flag = 1
+        end if
+     else
+;        print("Start years do not match, skipping precip regressions in amoc.ncl.")
+        prreg_plot_flag = 1
+     end if
+
+     if (prreg_plot_flag.eq.0) then
+        pr = data_read_in(paths_pr(ee),"PRECT",syear_pr(ee),eyear_pr(ee))     
+        if (OPT_CLIMO.eq."Full") then
+           pr = rmMonAnnCycTLL(pr)
+        else        
+           check_custom_climo(names_pr(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+           temp_arr = pr
+           delete(temp_arr&time)
+           temp_arr&time = cd_calendar(tas&time,-1)
+           if (CLIMO_SYEAR.lt.0) then
+              climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+           else
+              climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
+           end if    
+           delete(temp_arr)
+           pr   = calcMonAnomTLL(pr,climo) 
+           delete(climo)
+        end if
+     
+        temp = runave_n_Wrap(pr,12,0,0)   ; form annual averages
+        pr_ann = temp(5::12,:,:)
+        delete([/temp,pr/])
+
+        pr_reg_ann = pr_ann(0,:,:)                                                 ; PR regression onto AMOC PC1
+        pr_reg_ann = (/ regCoef(amoc_ts_ann,pr_ann(lat|:,lon|:,time|:)) /)
+        delete(pr_ann)
+     end if     
+
 ;---------------compute AMOC/AMO lead/lags----------------------------------------------------------------------------- 
      if (nyr(ee).ge.90.and.isvar("AMO")) then    ; need a minimum number of years to compute lead/lag correlations
         nwt = 51
@@ -501,6 +565,11 @@ begin
         moc_sd_ann&lat_amoc = lat_amoc
         z->amoc_mean_ann   = set_varAtts(moc_mean_ann,"AMOC mean (annual)","","") 
         z->amoc_stddev_ann = set_varAtts(moc_sd_ann,"AMOC standard deviation (annual)","","")
+        if AMOC_30N then
+           z->amoc_pattern_ann    = set_varAtts(moc_reg_ann,"AMOC regression onto timeseries of max at 30oN (annual)","Sv/Sv","") 
+        else
+           z->amoc_pattern_ann    = set_varAtts(moc_reg_ann,"AMOC regression onto AMOC principal component timeseries (annual)","","") 
+        end if
         z->amoc_pattern_ann    = set_varAtts(moc_reg_ann,"AMOC regression onto AMOC principal component timeseries (annual)","","") 
         delete([/modname,fn,TIME,lat_amoc/])
         delete(z)
@@ -528,7 +597,11 @@ begin
            else
               z = addfile(fn,"w")
            end if
-           z->amoc_sst_regression_ann = set_varAtts(sst_reg_ann,"sst regression onto AMOC principal component timeseries (annual)","","") 
+           if AMOC_30N then
+              z->amoc_sst_regression_ann = set_varAtts(tas_reg_ann,"sst regression onto AMOC 30N (annual)","oC/Sv","") 
+           else
+              z->amoc_sst_regression_ann = set_varAtts(sst_reg_ann,"sst regression onto AMOC principal component timeseries (annual)","","") 
+           end if
            delete(z)           
         end if
         if (tasreg_plot_flag.eq.0) then
@@ -555,9 +628,39 @@ begin
               z = addfile(fn,"w")
            end if
            if AMOC_30N then
-              z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC 30N (annual)","","") 
+              z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC 30N (annual)","oC/Sv","") 
            else
               z->amoc_tas_regression_ann = set_varAtts(tas_reg_ann,"tas regression onto AMOC PC1 (annual)","","") 
+           end if
+           delete(z)
+        end if
+        if (prreg_plot_flag.eq.0) then
+           modname = str_sub_str(names_pr(ee)," ","_")
+           bc = (/"/","'","(",")"/)
+           do gg = 0,dimsizes(bc)-1
+              modname = str_sub_str(modname,bc(gg),"_")
+           end do
+           fn = getenv("OUTDIR")+modname+".cvdp_data.amoc.pr."+syear_pr(ee)+"-"+eyear_pr(ee)+".nc"
+           if (.not.isfilepresent2(fn)) then
+              z = addfile(fn,"c")
+              z@source = "NCAR Climate Analysis Section's Climate Variability Diagnostics Package v"+getenv("VERSION")
+              z@notes = "Data from "+names_pr(ee)+" from "+syear_pr(ee)+"-"+eyear_pr(ee)
+              if (OPT_CLIMO.eq."Full") then
+                 z@climatology = syear_pr(ee)+"-"+eyear_pr(ee)+" climatology removed prior to all calculations (other than means)"
+              else
+                 if (CLIMO_SYEAR.lt.0) then
+                    z@climatology = (eyear(ee)+CLIMO_SYEAR)+"-"+(eyear(ee)+CLIMO_EYEAR)+" climatology removed prior to all calculations (other than means)"
+                 else
+                    z@climatology = CLIMO_SYEAR+"-"+CLIMO_EYEAR+" climatology removed prior to all calculations (other than means)"
+                 end if
+              end if
+           else
+              z = addfile(fn,"w")
+           end if
+           if AMOC_30N then
+              z->amoc_pr_regression_ann = set_varAtts(pr_reg_ann,"pr regression onto AMOC 30N (annual)","mm/day/Sv","") 
+           else
+              z->amoc_pr_regression_ann = set_varAtts(pr_reg_ann,"pr regression onto AMOC PC1 (annual)","","") 
            end if
            delete(z)
         end if
@@ -826,6 +929,10 @@ begin
         plot_amoc_tasreg_ann(ee) = gsn_csm_contour_map(wks_amoc_tasreg,tas_reg_ann,res)
         delete(tas_reg_ann)
      end if
+     if (prreg_plot_flag.eq.0) then
+        plot_amoc_prreg_ann(ee) = gsn_csm_contour_map(wks_amoc_prreg,pr_reg_ann,res)
+        delete(pr_reg_ann)
+     end if
      delete(res)
      
      res2 = True
@@ -916,6 +1023,10 @@ begin
   panres@txString = "AMOC TAS Regressions (Annual)"
   gsn_panel2(wks_amoc_tasreg,plot_amoc_tasreg_ann,(/nrow,ncol/),panres)
   delete(wks_amoc_tasreg)
+
+  panres@txString = "AMOC PR Regressions (Annual)"
+  gsn_panel2(wks_amoc_prreg,plot_amoc_prreg_ann,(/nrow,ncol/),panres)
+  delete(wks_amoc_prreg)
 
   panres@txString = "AMOC SST Regressions (Annual)"
   gsn_panel2(wks_amoc_sstreg,plot_amoc_sstreg_ann,(/nrow,ncol/),panres)

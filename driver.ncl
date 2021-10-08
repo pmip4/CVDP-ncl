@@ -147,7 +147,7 @@
   end if 
       
   if (output_type.eq."png") then
-     ofiles = systemfunc("ls "+outdir+"*.png")
+     ofiles = systemfunc("find "+outdir+" -type f -newer "+outdir+"/namelist -name *.png")
      do gg = 0,dimsizes(ofiles)-1
         system("convert -trim +repage -border 8 -bordercolor white "+ofiles(gg)+" "+ofiles(gg))
      end do
