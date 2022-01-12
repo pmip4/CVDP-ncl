@@ -401,7 +401,7 @@ begin
   ;Populate the ipcc_reg table
   txt = new(100,"string")
   txt(0) = table_top_txt
-  txt(1) = "<h3 class="+quote+"display-6"+quote+">IPCC Region Timeseries</h3>"
+  txt(1) = "<h3 class="+quote+"display-6"+quote+">IPCC AR5 Region Timeseries</h3>"
   regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\ ;global domains
                "ALA","AMZ","CAM","CAS","CEU","CGI","CNA","EAF","EAS","ENA",\ ;SREX regions
                "MED","NAS","NAU","NEB","NEU","SAF","SAH","SAS_lnd","SAS_ocn","SAU",\

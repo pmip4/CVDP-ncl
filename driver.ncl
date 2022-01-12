@@ -13,7 +13,7 @@
                                              ; files are being selected by the package. (See files in namelist_byvar/ directory)
                                              ; Set to False to run the entire package. 
                                              
-  obs                  = "True"              ; True = analyze and plot observations (specified in namelist_obs), False = do not
+  obs                  = "False"              ; True = analyze and plot observations (specified in namelist_obs), False = do not
   scale_timeseries     = "False"              ; True = scale timeseries so that x-axis length is comparable across timeseries, False = do not
   output_data          = "True"              ; True = output selected calculated data to a netCDF file. Make sure .nc files from previous CVDP
                                              ;        runs are not in outdir or they will get added to or modified.  
