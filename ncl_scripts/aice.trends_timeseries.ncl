@@ -177,7 +177,6 @@ begin
               temp_area_arr&time = cd_calendar(aice_nh_ext_mon&time,1)
               temp2_area_arr = aice_nh_sum_mon
               temp2_area_arr&time = cd_calendar(aice_nh_sum_mon&time,1)
-;              printVarSummary(temp_area_arr)
 ;              print(ph_area)
               do gg = 0,dimZ_ph-1
                  temp_area_arr({ph_area(gg*3):ph_area(gg*3+1)}) = temp_area_arr({ph_area(gg*3):ph_area(gg*3+1)}) + tofloat(ph_area(gg*3+2))
@@ -514,7 +513,6 @@ begin
            aice_sh_sum_djf&TIME = ispan(syear(ee),eyear(ee),1)
            aice_sh_sum_djf&TIME@units = "YYYY"
            aice_sh_sum_djf&TIME@long_name = "time"
-           printVarSummary(aice_sh_sum_djf)
            copy_VarMeta(aice_sh_sum_djf,aice_sh_sum_mam)
            copy_VarMeta(aice_sh_sum_djf,aice_sh_sum_jja)
            copy_VarMeta(aice_sh_sum_djf,aice_sh_sum_son)
