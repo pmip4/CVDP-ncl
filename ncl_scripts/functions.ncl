@@ -1322,17 +1322,7 @@ begin
   end if
 
   do ff = 0,1  ; first time through trim and add border, second time through add watermark
-     numPlotsCompleted = 0
-     numJobsActive = 0
      do gg = 0,dimsizes(ofiles)-1
-        do while (numJobsActive.ge.(max_num_tasks*2))
-           pid = subprocess_wait(0, True) ; check if any tasks have completed; block until something completes...
-           if (pid.gt.0) then
-              numPlotsCompleted = numPlotsCompleted + 1
-              numJobsActive = numJobsActive - 1
-              break
-           end if
-        end do
         if (ff.eq.0) then
            if (otype.eq."png") then
               command = "convert "+oreso+" -bordercolor white -background white -flatten "+ofiles(gg)+" "+ofiles_png(gg)
@@ -1342,10 +1332,9 @@ begin
         else
            command = "composite -dissolve 50% -gravity northeast "+zp0+"copyright.gif "+ofiles_png(gg)+" "+ofiles_png(gg)
         end if
-        pid = subprocess(command)
-        numJobsActive = numJobsActive + 1
+        system(command)
      end do
-     sleep(10)   ; wait 10 seconds for last batch of conversions to complete
+     sleep(60)   ; wait for a minute for all the file conversions to complete
   end do
 ;---------------------------------------
 ; Add watermark to metrics graphics
@@ -1355,19 +1344,9 @@ begin
   numJobsActive = 0
   if (.not.ismissing(ofiles(0))) then
      do gg = 0,dimsizes(ofiles)-1
-        do while (numJobsActive.ge.(max_num_tasks*2))
-           pid = subprocess_wait(0, True) ; check if any tasks have completed; block until something completes...
-           if (pid.gt.0) then
-              numPlotsCompleted = numPlotsCompleted + 1
-              numJobsActive = numJobsActive - 1
-              break
-           end if
-        end do
         command = "composite -dissolve 100% -gravity northeast "+zp0+"copyright2.gif "+ofiles(gg)+" "+ofiles(gg)
-        pid = subprocess(command)
-        numJobsActive = numJobsActive + 1
      end do
-     sleep(10)   ; wait 10 seconds for last batch of conversions to complete
+     sleep(60)   ; wait a minute for all the file conversions to complete
   end if
 ;---------------------------------------
 ; Cleanup .eps files and ESMF regridding logs
