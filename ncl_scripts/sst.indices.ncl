@@ -343,7 +343,7 @@ begin
      copy_VarCoords(nino34,socn)
      socn@units = sst@units
      socn@long_name = "Southern Ocean Index (monthly)"  
-     delete(climo);remove the climatology: not needed anymore
+     delete([/climo,coswgt/]);remove the climatology: not needed anymore
 ;---------------------------------------------------------------------------------------------     
      if (OUTPUT_DATA.eq."True") then
         modname = str_sub_str(names(ee)," ","_")

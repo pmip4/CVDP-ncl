@@ -400,6 +400,9 @@ begin
            aice_sh_ext_mon = aice_sh_ext_mon/1.e12
            aice_sh_ext_mon@units = "10^12 m2"
            aice_sh_ext_mon@long_name = "sea_ice_extent"
+           if (isvar("aice_sh_sum_mon")) then
+              delete(aice_sh_sum_mon) ; I'm baffled about why this isn't deleted earlier. But this should catch any problems.
+           end if
            aice_sh_sum_mon = aice_sh_sum(:,0,0)   ; preallocate array to retain metadata
            aice_sh_sum_mon = (/ wgt_areasum2(aice_sh_sum,wgts,0) /)
            aice_sh_sum_mon = aice_sh_sum_mon/1.e12
@@ -746,6 +749,7 @@ begin
            z->sic_nh_area_mar = set_varAtts(nh_sum_mar,"Northern Hemisphere sea ice area timeseries (March)","","")
            z->sic_nh_area_sep = set_varAtts(nh_sum_sep,"Northern Hemisphere sea ice area timeseries (September)","","")
            delete([/nh_sum_djf,nh_sum_mam,nh_sum_jja,nh_sum_son,nh_sum_ann,nh_sum_feb,nh_sum_mar,nh_sum_sep,nh_sum_mon,nh_sum_mon_anom/])
+           delete([/aice_nh_sum_djf,aice_nh_sum_mam,aice_nh_sum_jja,aice_nh_sum_son,aice_nh_sum_ann,aice_nh_sum_feb,aice_nh_sum_mar,aice_nh_sum_sep,aice_nh_sum_mon,aice_nh_sum_mon_anom/])
         end if
         delete([/nh_trends_seas,nh_trends_ann,nh_trends_mon/])
         delete(z)
@@ -923,16 +927,11 @@ begin
            z->sic_sh_area_mar = set_varAtts(sh_sum_mar,"Southern Hemisphere sea ice area timeseries (March)","","")
            z->sic_sh_area_sep = set_varAtts(sh_sum_sep,"Southern Hemisphere sea ice area timeseries (September)","","")
            delete([/sh_sum_djf,sh_sum_mam,sh_sum_jja,sh_sum_son,sh_sum_ann,sh_sum_feb,sh_sum_mar,sh_sum_sep,sh_sum_mon,sh_sum_mon_anom/])
+           ;At present, the sea ice area timeseries are not plotted - just output. So tidy them up here   
+           delete([/aice_sh_sum_djf,aice_sh_sum_mam,aice_sh_sum_jja,aice_sh_sum_son,aice_sh_sum_ann,aice_sh_sum_feb,aice_sh_sum_mar,aice_sh_sum_sep,aice_sh_sum_mon,aice_sh_sum_mon_anom/])
         end if
         delete([/sh_trends_seas,sh_trends_ann,sh_trends_mon/])
         delete(z)
-     end if
-     ;At present, the sea ice area timeseries are not plotted - just output. So tidy them up here   
-     if (aice_nh_flag.eq.0) then
-       delete([/aice_nh_sum_djf,aice_nh_sum_mam,aice_nh_sum_jja,aice_nh_sum_son,aice_nh_sum_ann,aice_nh_sum_feb,aice_nh_sum_mar,aice_nh_sum_sep,aice_nh_sum_mon,aice_nh_sum_mon_anom/])
-     end if
-     if (aice_sh_flag.eq.0) then
-       delete([/aice_sh_sum_djf,aice_sh_sum_mam,aice_sh_sum_jja,aice_sh_sum_son,aice_sh_sum_ann,aice_sh_sum_feb,aice_sh_sum_mar,aice_sh_sum_sep,aice_sh_sum_mon,aice_sh_sum_mon_anom/])
      end if
 
      if (aice_nh_flag.eq.0) then
