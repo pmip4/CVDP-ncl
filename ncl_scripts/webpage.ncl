@@ -391,7 +391,8 @@ begin
   txt(9) = "<td>"+table_link_setup(OUTDIR,"npi.timeseries.ndjfm.png","North Pacific PSL")+"</td></tr>"
   txt(10) = "<tr><td>"+table_link_setup(OUTDIR,"iod.timeseries.png","Indian Ocean SST Dipole")+"</td>"
   txt(11) = "<td>"+table_link_setup(OUTDIR,"tio.timeseries.png","Tropical Indian Ocean SST")+"</td>"
-  txt(12) = "<td>"+table_link_setup(OUTDIR,"socn.timeseries.png","Southern Ocean SST")+"</td></tr>"
+  txt(12) = "<td>"+table_link_setup(OUTDIR,"eeio.timeseries.png","Eastern Equatorial Indian Ocean SST")+"</td></tr>"
+  txt(13) = "<td>"+table_link_setup(OUTDIR,"socn.timeseries.png","Southern Ocean SST")+"</td></tr>"
   txt(48)=table_bottom_txt
   txt(49)=""
   add_ts_txt=[/txt(ind(.not.ismissing(txt)))/]

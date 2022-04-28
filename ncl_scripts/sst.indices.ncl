@@ -155,6 +155,7 @@ begin
   xytna = new(nsim,"graphic")  
   xytsa = new(nsim,"graphic") 
   xytio = new(nsim,"graphic")  
+  xyeeio = new(nsim,"graphic")  
   xyiod = new(nsim,"graphic")  
   xysocn = new(nsim,"graphic")  
   xyamm  = new(nsim,"graphic")  
@@ -329,6 +330,18 @@ begin
      tio@units = sst@units
      tio@long_name = "Tropical Indian Ocean SST timeseries (monthly)"       
      
+     ; Eastern Equatorail Indian Ocean Index DiNezio et al (2020,https://www.science.org/doi/10.1126/sciadv.aay7684)
+     llats = -2.5    ;  
+     llatn = 2.5
+     llonw = 70.
+     llone = 95.
+     eeio = wgt_areaave(sst(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  
+     eeio@AnnCycle = wgt_areaave_Wrap(climo(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)
+     eeio@comment_cvdp = "area average domain ("+llats+":"+llatn+"N, "+llonw+":"+llone+"E)"
+     copy_VarCoords(nino34,eeio)
+     eeio@units = sst@units
+     eeio@long_name = "Eastern Equatorial Indian Ocean SST timeseries (monthly)"       
+
                      ; Indian Ocean Dipole Index http://www.bom.gov.au/climate/IOD/about_IOD.shtml
      iod = wgt_areaave(sst(:,{-10.:10.},{50.:70.}),coswgt({-10.:10.}),1.0,0) - wgt_areaave(sst(:,{-10.:0.},{90.:110.}),coswgt({-10.:0.}),1.0,0)  
      iod@AnnCycle = wgt_areaave(climo(:,{-10.:10.},{50.:70.}),coswgt({-10.:10.}),1.0,0) - wgt_areaave(climo(:,{-10.:0.},{90.:110.}),coswgt({-10.:0.}),1.0,0)  
@@ -384,6 +397,7 @@ begin
         z->north_tropical_atlantic = set_varAtts(tna,"","","")
         z->south_tropical_atlantic = set_varAtts(tsa,"","","")
         z->tropical_indian_ocean = set_varAtts(tio,"","","")
+        z->east_eq_indian_ocean = set_varAtts(eeio,"","","")
         z->indian_ocean_dipole = set_varAtts(iod,"","","")
         z->southern_ocean = set_varAtts(socn,"","","")
         z->atlantic_meridional_mode = set_varAtts(amm,"","","")
@@ -1309,6 +1323,13 @@ begin
      xytio(ee) = gsn_csm_xy(wks_tio,fspan(syear(ee),eyear(ee)+.91667,dimsizes(tio)),arr,xyres)
      delete(tttt)
      
+     tttt = dtrend_msg(ispan(0,dimsizes(eeio)-1,1),tio,False,True)
+     arr(0,:) = (/ eeio /)
+     arr(1,:) = (/  (ispan(0,dimsizes(eeio)-1,1)*tttt@slope)+tttt@y_intercept /)
+     xyres@gsnRightString = decimalPlaces(tttt@slope*dimsizes(eeio),2,True)+eeio@units+" "+nyr(ee)+"yr~S~-1~N~"
+     xyeeio(ee) = gsn_csm_xy(wks_tio,fspan(syear(ee),eyear(ee)+.91667,dimsizes(eeio)),arr,xyres)
+     delete(tttt)
+     
      tttt = dtrend_msg(ispan(0,dimsizes(iod)-1,1),iod,False,True)
      arr(0,:) = (/ iod /)
      arr(1,:) = (/  (ispan(0,dimsizes(iod)-1,1)*tttt@slope)+tttt@y_intercept /)
@@ -1359,6 +1380,7 @@ begin
      title_tsa = tsa@comment_cvdp
         
      title_tio  = tio@comment_cvdp
+     title_eeio  = eeio@comment_cvdp
      title_iod  = iod@comment_cvdp
      title_socn = socn@comment_cvdp
      title_amm  = amm@comment_cvdp
@@ -1993,6 +2015,9 @@ begin
      panres@txString = "Tropical Indian Ocean (Monthly, "+title_tio+")"
      gsn_panel2(wks_tio,xytio,lp,panres)   
   
+     panres@txString = "Eastern Equatorial Indian Ocean (Monthly, "+title_eeio+")"
+     gsn_panel2(wks_tio,xyeeio,lp,panres)   
+
      panres@txString = "Indian Ocean Dipole (Monthly, "+title_iod+")"
      gsn_panel2(wks_tio,xyiod,lp,panres)  
 
