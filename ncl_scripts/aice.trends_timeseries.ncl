@@ -273,10 +273,31 @@ begin
            aice_nh_sum_climo@long_name = "climatological_sea_ice_area"
            aice_nh_sum_climo!0 = "time_mon2"
            aice_nh_sum_climo&time_mon2 = time_mon2
-           do gg = 0,11
-              aice_nh_ext_climo(gg) = (/ avg(aice_nh_ext_mon(gg::12)) /)
-              aice_nh_sum_climo(gg) = (/ avg(aice_nh_sum_mon(gg::12)) /)
-           end do    
+           if (OPT_CLIMO.eq."Full") then
+              do gg = 0,11
+                 aice_nh_ext_climo(gg) = (/ avg(aice_nh_ext_mon(gg::12)) /)
+                 aice_nh_sum_climo(gg) = (/ avg(aice_nh_sum_mon(gg::12)) /)
+              end do    
+           else
+              check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_ts = aice_nh_ext_mon
+              temp_ts&time = cd_calendar(aice_nh_ext_mon&time,-1)
+              temp2_ts = aice_nh_sum_mon
+              temp2_ts&time = cd_calendar(aice_nh_sum_mon&time,-1)
+              if (CLIMO_SYEAR.lt.0) then
+                 do gg = 0,11
+                    aice_nh_ext_climo(gg) = (/ avg(temp_ts({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12:12}))/)
+                    aice_nh_sum_climo(gg) = (/ avg(temp2_ts({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12:12})) /)
+                 end do    
+              else
+                 do gg = 0,11
+                    aice_nh_ext_climo(gg) = (/ avg(temp_ts({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12:12}))/)
+                    aice_nh_sum_climo(gg) = (/ avg(temp2_ts({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12:12})) /)
+                 end do    
+              end if              
+              delete(temp_ts)
+              delete(temp2_ts)
+           end if
 
            temp = runave_Wrap(aice_nh_ext_mon,3,0)
            aice_nh_ext_djf = temp(0::12)
@@ -480,10 +501,31 @@ begin
            aice_sh_ext_climo&time_mon2 = time_mon2
            aice_sh_sum_climo=aice_sh_ext_climo
            aice_sh_sum_climo@long_name = "climatological_sea_ice_area"
-           do gg = 0,11
-              aice_sh_ext_climo(gg) = (/ avg(aice_sh_ext_mon(gg::12)) /)
-              aice_sh_sum_climo(gg) = (/ avg(aice_sh_sum_mon(gg::12)) /)
-           end do    
+           if (OPT_CLIMO.eq."Full") then
+              do gg = 0,11
+                 aice_sh_ext_climo(gg) = (/ avg(aice_sh_ext_mon(gg::12)) /)
+                 aice_sh_sum_climo(gg) = (/ avg(aice_sh_sum_mon(gg::12)) /)
+              end do    
+           else
+              check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_ts = aice_sh_ext_mon
+              temp_ts&time = cd_calendar(aice_sh_ext_mon&time,-1)
+              temp2_ts = aice_sh_sum_mon
+              temp2_ts&time = cd_calendar(aice_sh_sum_mon&time,-1)
+              if (CLIMO_SYEAR.lt.0) then
+                 do gg = 0,11
+                    aice_sh_ext_climo(gg) = (/ avg(temp_ts({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12:12}))/)
+                    aice_sh_sum_climo(gg) = (/ avg(temp2_ts({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12:12})) /)
+                 end do    
+              else
+                 do gg = 0,11
+                    aice_sh_ext_climo(gg) = (/ avg(temp_ts({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12:12}))/)
+                    aice_sh_sum_climo(gg) = (/ avg(temp2_ts({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12:12})) /)
+                 end do    
+              end if              
+              delete(temp_ts)
+              delete(temp2_ts)
+           end if
 
            temp = runave_Wrap(aice_sh_ext_mon,3,0)
            aice_sh_ext_djf = temp(0::12)
