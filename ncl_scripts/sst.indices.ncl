@@ -1325,7 +1325,7 @@ begin
      xytio(ee) = gsn_csm_xy(wks_tio,fspan(syear(ee),eyear(ee)+.91667,dimsizes(tio)),arr,xyres)
      delete(tttt)
      
-     tttt = dtrend_msg(ispan(0,dimsizes(eeio)-1,1),tio,False,True)
+     tttt = dtrend_msg(ispan(0,dimsizes(eeio)-1,1),eeio,False,True)
      arr(0,:) = (/ eeio /)
      arr(1,:) = (/  (ispan(0,dimsizes(eeio)-1,1)*tttt@slope)+tttt@y_intercept /)
      xyres@gsnRightString = decimalPlaces(tttt@slope*dimsizes(eeio),2,True)+eeio@units+" "+nyr(ee)+"yr~S~-1~N~"
@@ -2026,10 +2026,10 @@ begin
      panres@txString = "Southern Ocean (Monthly, "+title_socn+")"
      gsn_panel2(wks_tio,xysocn,lp,panres) 
 
-     panres@txString = "Atlantic Meridional Mode (Monthly, "+title_iod+")"
+     panres@txString = "Atlantic Meridional Mode (Monthly, "+title_amm+")"
      gsn_panel2(wks_tio,xyiod,lp,panres)  
 
-     panres@txString = "Atlantic Nin~H-13V2F35~D~FV-2H3F21~o3 (Monthly, "+title_socn+")"
+     panres@txString = "Atlantic Nin~H-13V2F35~D~FV-2H3F21~o3 (Monthly, "+title_atl3+")"
      gsn_panel2(wks_tio,xysocn,lp,panres) 
   end if
   delete(wks_tio) 
@@ -2157,10 +2157,11 @@ begin
      end if
      if (isfilepresent2(OUTDIR+"tio.timeseries.000001.png")) then
         system("mv "+OUTDIR+"tio.timeseries.000001.png "+OUTDIR+"tio.timeseries.png")
-        system("mv "+OUTDIR+"tio.timeseries.000002.png "+OUTDIR+"iod.timeseries.png")
-        system("mv "+OUTDIR+"tio.timeseries.000003.png "+OUTDIR+"socn.timeseries.png")
-        system("mv "+OUTDIR+"tio.timeseries.000004.png "+OUTDIR+"amm.timeseries.png")
-        system("mv "+OUTDIR+"tio.timeseries.000005.png "+OUTDIR+"atl3.timeseries.png")
+        system("mv "+OUTDIR+"tio.timeseries.000002.png "+OUTDIR+"eeio.timeseries.png")
+        system("mv "+OUTDIR+"tio.timeseries.000003.png "+OUTDIR+"iod.timeseries.png")
+        system("mv "+OUTDIR+"tio.timeseries.000004.png "+OUTDIR+"socn.timeseries.png")
+        system("mv "+OUTDIR+"tio.timeseries.000005.png "+OUTDIR+"amm.timeseries.png")
+        system("mv "+OUTDIR+"tio.timeseries.000006.png "+OUTDIR+"atl3.timeseries.png")
      end if
      if (isfilepresent2(OUTDIR+"nino34.powspec.000001.png")) then
         system("mv "+OUTDIR+"nino34.powspec.000001.png "+OUTDIR+"nino34.powspec.png")
