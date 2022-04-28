@@ -330,9 +330,11 @@ begin
      tio@units = sst@units
      tio@long_name = "Tropical Indian Ocean SST timeseries (monthly)"       
      
-     ; Eastern Equatorail Indian Ocean Index DiNezio et al (2020,https://www.science.org/doi/10.1126/sciadv.aay7684)
-     llats = -2.5    ;  
-     llatn = 2.5
+     ; Eastern Equatorial Indian Ocean Index
+     ; Based on DiNezio et al (2020,https://www.science.org/doi/10.1126/sciadv.aay7684), 
+     ;  but expanded to 5oS-5oN (after nino3), because not all models have gridpoint between 2.5oS-2.5oN
+     llats = -5.;  
+     llatn = 5.
      llonw = 70.
      llone = 95.
      eeio = wgt_areaave(sst(:,{llats:llatn},{llonw:llone}),coswgt({llats:llatn}),1.0,0)  

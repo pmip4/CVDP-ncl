@@ -1154,7 +1154,15 @@ begin
               aice_nh_obs_climo = aice_nh_ext_climo
            end if
 
-           xyres_c@gsnLeftString = syear(ee)+"-"+eyear(ee)  
+           if (OPT_CLIMO.eq."Full") then
+              xyres_c@gsnLeftString = syear(ee)+"-"+eyear(ee)  
+           else
+              if (CLIMO_SYEAR.lt.0) then
+                 xyres_c@gsnLeftString = (eyear(ee)+CLIMO_SYEAR)+"-"+(eyear(ee)+CLIMO_EYEAR)  
+              else
+                 xyres_c@gsnLeftString = CLIMO_SYEAR+"-"+CLIMO_EYEAR  
+              end if
+           end if
            xyres_c@gsnCenterString = names(ee)+ph_s   ; ph_s is used to denote extent timeseries that have had pole hole areas added in   
            xyres_c@gsnRightString = "("+str_sub_str(str_sub_str(aice_nh_ext_climo@units,"m2","m~S~2~N~"),"10^12","10~S~12~N~")+")"
            if (ee.eq.0) then
@@ -1379,7 +1387,15 @@ begin
               aice_sh_obs_climo = aice_sh_ext_climo
            end if
 
-           xyres_c@gsnLeftString = syear_sh(ee)+"-"+eyear_sh(ee)  
+           if (OPT_CLIMO.eq."Full") then
+              xyres_c@gsnLeftString = syear(ee)+"-"+eyear(ee)  
+           else
+              if (CLIMO_SYEAR.lt.0) then
+                 xyres_c@gsnLeftString = (eyear(ee)+CLIMO_SYEAR)+"-"+(eyear(ee)+CLIMO_EYEAR)  
+              else
+                 xyres_c@gsnLeftString = CLIMO_SYEAR+"-"+CLIMO_EYEAR  
+              end if
+           end if
            xyres_c@gsnCenterString = names_sh(ee)  
            xyres_c@gsnRightString = "("+str_sub_str(str_sub_str(aice_sh_ext_climo@units,"m2","m~S~2~N~"),"10^12","10~S~12~N~")+")"
            if (ee.eq.0) then
