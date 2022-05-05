@@ -547,10 +547,11 @@ begin
         amoc_ts_ann&TIME = TIME
         if AMOC_30N then
            amoc_ts_ann@long_name = "AMOC 30N timeseries (annual)"
+           z->amoc_timeseries_ann = set_varAtts(amoc_ts_ann,"","Sv","")
         else
            amoc_ts_ann@long_name = "AMOC pc1 timeseries (annual)"
+           z->amoc_timeseries_ann = set_varAtts(amoc_ts_ann,"","1","")
         end if
-        z->amoc_timeseries_ann = set_varAtts(amoc_ts_ann,"","1","")
         lat_amoc = moc_reg_ann&lat
         lat_amoc!0 = "lat_amoc"
         lat_amoc&lat_amoc = lat_amoc
@@ -570,7 +571,6 @@ begin
         else
            z->amoc_pattern_ann    = set_varAtts(moc_reg_ann,"AMOC regression onto AMOC principal component timeseries (annual)","","") 
         end if
-        z->amoc_pattern_ann    = set_varAtts(moc_reg_ann,"AMOC regression onto AMOC principal component timeseries (annual)","","") 
         delete([/modname,fn,TIME,lat_amoc/])
         delete(z)
         

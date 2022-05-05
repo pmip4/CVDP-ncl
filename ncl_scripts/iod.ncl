@@ -316,7 +316,7 @@ begin
            else
               z_tas = addfile(fn,"w")
            end if
-           z_tas->iod_tas_regression_mon = set_varAtts(finreg_tas,"tas regression onto IOD timeseries (monthly)","","")    
+           z_tas->iod_tas_regression_mon = set_varAtts(finreg_tas,"tas regression onto IOD timeseries (monthly)","oC/oC","")    
            delete([/modname,fn,z_tas/])
         end if
         if (prreg_plot_flag.eq.0) then
@@ -343,7 +343,7 @@ begin
            else
               z_pr = addfile(fn,"w")
            end if
-           z_pr->iod_pr_regression_mon = set_varAtts(finreg_pr,"pr regression onto IOD timeseries (monthly)","","") 
+           z_pr->iod_pr_regression_mon = set_varAtts(finreg_pr,"pr regression onto IOD timeseries (monthly)","mm/day/oC","") 
            delete([/modname,fn,z_pr/])
         end if
      end if              
