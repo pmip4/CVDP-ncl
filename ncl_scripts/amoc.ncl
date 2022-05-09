@@ -448,7 +448,7 @@ begin
            check_custom_climo(names_pr(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
            temp_arr = pr
            delete(temp_arr&time)
-           temp_arr&time = cd_calendar(tas&time,-1)
+           temp_arr&time = cd_calendar(pr&time,-1)
            if (CLIMO_SYEAR.lt.0) then
               climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
            else
