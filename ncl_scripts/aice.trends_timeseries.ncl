@@ -287,7 +287,7 @@ begin
               if (CLIMO_SYEAR.lt.0) then
                  do gg = 0,11
                     aice_nh_ext_climo(gg) = (/ avg(temp_ts({(eyear(ee)+CLIMO_SYEAR)*100+1+gg:(eyear(ee)+CLIMO_EYEAR)*100+12:12}))/)
-                    aice_nh_sum_climo(gg) = (/ avg(temp2_ts({(eyear(ee)+CLIMO_SYEAR)*100+1+GMT_gebco:(eyear(ee)+CLIMO_EYEAR)*100+12:12})) /)
+                    aice_nh_sum_climo(gg) = (/ avg(temp2_ts({(eyear(ee)+CLIMO_SYEAR)*100+1+gg:(eyear(ee)+CLIMO_EYEAR)*100+12:12})) /)
                  end do    
               else
                  do gg = 0,11
