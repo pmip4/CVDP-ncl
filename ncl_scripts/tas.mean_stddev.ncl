@@ -336,7 +336,8 @@ begin
      plot_mean_son(ee) = gsn_csm_contour_map(wks_mean_son,tas_mean_son,sres)
      plot_mean_ond(ee) = gsn_csm_contour_map(wks_mean_ond,tas_mean_son,sres)
      plot_mean_ann(ee) = gsn_csm_contour_map(wks_mean_ann,tas_mean_ann,sres)
-     delete([/tas_sd_djf,tas_sd_mam,tas_sd_jja,tas_sd_jjas,tas_sd_son,tas_sd_ond,tas_sd_ann,tas_mean_djf,tas_mean_mam,tas_mean_jja,tas_mean_jjas,tas_mean_son,tas_mean_ond,tas_mean_ann,res,sres/])  end do     
+     delete([/tas_sd_djf,tas_sd_mam,tas_sd_jja,tas_sd_jjas,tas_sd_son,tas_sd_ond,tas_sd_ann,tas_mean_djf,tas_mean_mam,tas_mean_jja,tas_mean_jjas,tas_mean_son,tas_mean_ond,tas_mean_ann,res,sres/])
+  end do     
      
   panres = True
   panres@gsnMaximize = True  

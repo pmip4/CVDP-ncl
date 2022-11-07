@@ -239,7 +239,7 @@ begin
   end if 
   
   if (case_sens.eq."CMIP_ONLY") then
-    tstring0 = "tas_Amon_,tasAmon_"
+    tstring0 = "tas_Amon_"
     tstring1 = "tas_Amon,tasAmon"
   else
     if (case_sens.eq."True") then
@@ -251,7 +251,7 @@ begin
     end if
   end if
   do gg = 0,nsim-1
-     fsst = systemfunc("ls "+paths(gg)+"*{"+tstring0+"}*.nc 2> /dev/null")   ; /dev/null suppresses all standard error output
+     fsst = systemfunc("ls "+paths(gg)+"*"+tstring0+"*.nc 2> /dev/null")   ; /dev/null suppresses all standard error output
      if (dimsizes(fsst).eq.1) then
         namelist_trefht(gg+maxnumobs) =  names(gg)+" | "+fsst(0)+" | "+syear(gg)+" | "+eyear(gg)   ; grab first file
      else
