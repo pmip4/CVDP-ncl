@@ -45,7 +45,9 @@ begin
   wks_stddev_djf = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.stddev.djf")
   wks_stddev_mam = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.stddev.mam")
   wks_stddev_jja = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.stddev.jja")
+  wks_stddev_jjas = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.stddev.jjas")
   wks_stddev_son = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.stddev.son")
+  wks_stddev_ond = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.stddev.ond")
   wks_stddev_ann = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.stddev.ann")
   wks_mean = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.mean")
   wks_za_djf = gsn_open_wks(wks_type,getenv("OUTDIR")+"pr.za.djf")
@@ -58,7 +60,9 @@ begin
      gsn_define_colormap(wks_stddev_djf,"precip3_16lev") 
      gsn_define_colormap(wks_stddev_mam,"precip3_16lev")  
      gsn_define_colormap(wks_stddev_jja,"precip3_16lev") 
+     gsn_define_colormap(wks_stddev_jjas,"precip3_16lev") 
      gsn_define_colormap(wks_stddev_son,"precip3_16lev")  
+     gsn_define_colormap(wks_stddev_ond,"precip3_16lev")  
      gsn_define_colormap(wks_stddev_ann,"precip3_16lev")   
      gsn_define_colormap(wks_mean,"precip3_16lev") 
      gsn_define_colormap(wks_za_djf,"cb_9step")  
@@ -71,7 +75,9 @@ begin
      gsn_define_colormap(wks_stddev_djf,"cb_rainbow") 
      gsn_define_colormap(wks_stddev_mam,"cb_rainbow")  
      gsn_define_colormap(wks_stddev_jja,"cb_rainbow") 
-     gsn_define_colormap(wks_stddev_son,"cb_rainbow")  
+     gsn_define_colormap(wks_stddev_jjas,"cb_rainbow")  
+     gsn_define_colormap(wks_stddev_son,"cb_rainbow") 
+     gsn_define_colormap(wks_stddev_ond,"cb_rainbow")  
      gsn_define_colormap(wks_stddev_ann,"cb_rainbow")  
      gsn_define_colormap(wks_mean,"BlueDarkRed18")      
      gsn_define_colormap(wks_za_djf,"cb_9step")  
@@ -84,12 +90,16 @@ begin
   plot_mean_djf = new(nsim,"graphic")  
   plot_mean_mam = new(nsim,"graphic")  
   plot_mean_jja = new(nsim,"graphic")  
-  plot_mean_son = new(nsim,"graphic")   
-  plot_mean_ann = new(nsim,"graphic")  
+  plot_mean_jjas = new(nsim,"graphic")   
+  plot_mean_son = new(nsim,"graphic")  
+  plot_mean_ond = new(nsim,"graphic")  
+  plot_mean_ann = new(nsim,"graphic")   
   plot_stddev_djf = new(nsim,"graphic")  
   plot_stddev_mam = new(nsim,"graphic")  
   plot_stddev_jja = new(nsim,"graphic")  
-  plot_stddev_son = new(nsim,"graphic")   
+  plot_stddev_jjas = new(nsim,"graphic")   
+  plot_stddev_son = new(nsim,"graphic")  
+  plot_stddev_ond = new(nsim,"graphic")   
   plot_stddev_ann = new(nsim,"graphic")   
   
   plot_za_djf = new(nsim,"graphic")  
@@ -170,6 +180,7 @@ begin
         ppt_seas = runave_n_Wrap(pptT,3,0,0)
         ppt_seas(0,:,:) = (/ dim_avg_n(pptT(:1,:,:),0) /)
         ppt_seas(dimsizes(pptT&time)-1,:,:) = (/ dim_avg_n(pptT(dimsizes(pptT&time)-2:,:,:),0) /)
+        ppt_4months = runave_n_Wrap(pptT,4,0,0)
         ppt_ann = runave_n_Wrap(pptT,12,0,0)
         delete(pptT)
         
@@ -177,7 +188,9 @@ begin
            ppt_mean_djf = dim_avg_n_Wrap(ppt_seas(0::12,:,:),0)
            ppt_mean_mam = dim_avg_n_Wrap(ppt_seas(3::12,:,:),0)
            ppt_mean_jja = dim_avg_n_Wrap(ppt_seas(6::12,:,:),0)
+           ppt_mean_jjas = dim_avg_n_Wrap(ppt_4months(6::12,:,:),0)
            ppt_mean_son = dim_avg_n_Wrap(ppt_seas(9::12,:,:),0)
+           ppt_mean_ond = dim_avg_n_Wrap(ppt_seas(10::12,:,:),0)
            ppt_mean_ann = dim_avg_n_Wrap(ppt_ann(5::12,:,:),0)
   
            ppt_zamean_djf = dim_avg_n_Wrap(ppt_mean_djf,1)
@@ -191,24 +204,30 @@ begin
              ppt_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),ppt_seas(0::12,:,:),False,False,0),0)
              ppt_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),ppt_seas(3::12,:,:),False,False,0),0)
              ppt_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),ppt_seas(6::12,:,:),False,False,0),0)
+             ppt_sd_jjas = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),ppt_4months(6::12,:,:),False,False,0),0)
              ppt_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),ppt_seas(9::12,:,:),False,False,0),0)
+             ppt_sd_ond = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),ppt_seas(10::12,:,:),False,False,0),0)
              ppt_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),ppt_ann(5::12,:,:),False,False,0),0)
              delete(climo_nyrs)   
            else
              ppt_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),ppt_seas(0::12,:,:),False,False,0),0)
              ppt_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),ppt_seas(3::12,:,:),False,False,0),0)
              ppt_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),ppt_seas(6::12,:,:),False,False,0),0)
+             ppt_sd_jjas = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),ppt_4months(6::12,:,:),False,False,0),0)
              ppt_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),ppt_seas(9::12,:,:),False,False,0),0)
+             ppt_sd_ond = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),ppt_seas(10::12,:,:),False,False,0),0)
              ppt_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),ppt_ann(5::12,:,:),False,False,0),0)
            end if
        end if
-       delete([/ppt_seas,ppt_ann/])
+       delete([/ppt_seas,ppt_4months,ppt_ann/])
      end do
      delete(ppt)
      copy_VarMeta(ppt_mean_djf,ppt_sd_djf)
      copy_VarMeta(ppt_mean_mam,ppt_sd_mam)
      copy_VarMeta(ppt_mean_jja,ppt_sd_jja)
+     copy_VarMeta(ppt_mean_jjas,ppt_sd_jjas)
      copy_VarMeta(ppt_mean_son,ppt_sd_son)
+     copy_VarMeta(ppt_mean_ond,ppt_sd_ond)
      copy_VarMeta(ppt_mean_ann,ppt_sd_ann)     
      
      if (OUTPUT_DATA.eq."True") then
@@ -239,13 +258,17 @@ begin
         z->pr_spatialmean_djf     = set_varAtts(ppt_mean_djf,"pr mean (DJF)","","")
         z->pr_spatialmean_mam     = set_varAtts(ppt_mean_mam,"pr mean (MAM)","","")
         z->pr_spatialmean_jja     = set_varAtts(ppt_mean_jja,"pr mean (JJA)","","")
+        z->pr_spatialmean_jjas    = set_varAtts(ppt_mean_jjas,"pr mean (JJAS)","","")
         z->pr_spatialmean_son     = set_varAtts(ppt_mean_son,"pr mean (SON)","","")
+        z->pr_spatialmean_ond     = set_varAtts(ppt_mean_ond,"pr mean (OND)","","")
         z->pr_spatialmean_ann     = set_varAtts(ppt_mean_ann,"pr mean (annual)","","")
         
         z->pr_spatialstddev_djf     = set_varAtts(ppt_sd_djf,"pr standard deviation (DJF)","","")
         z->pr_spatialstddev_mam     = set_varAtts(ppt_sd_mam,"pr standard deviation (MAM)","","")
         z->pr_spatialstddev_jja     = set_varAtts(ppt_sd_jja,"pr standard deviation (JJA)","","")
+        z->pr_spatialstddev_jjas    = set_varAtts(ppt_sd_jjas,"pr standard deviation (JJAS)","","")
         z->pr_spatialstddev_son     = set_varAtts(ppt_sd_son,"pr standard deviation (SON)","","")
+        z->pr_spatialstddev_ond     = set_varAtts(ppt_sd_ond,"pr standard deviation (OND)","","")
         z->pr_spatialstddev_ann     = set_varAtts(ppt_sd_ann,"pr standard deviation (annual)","","")
         delete(z)
         delete([/modname,fn/])
@@ -318,7 +341,9 @@ begin
      plot_stddev_djf(ee) = gsn_csm_contour_map(wks_stddev_djf,ppt_sd_djf,res)
      plot_stddev_mam(ee) = gsn_csm_contour_map(wks_stddev_mam,ppt_sd_mam,res)
      plot_stddev_jja(ee) = gsn_csm_contour_map(wks_stddev_jja,ppt_sd_jja,res)
+     plot_stddev_jjas(ee) = gsn_csm_contour_map(wks_stddev_jjas,ppt_sd_jjas,res)
      plot_stddev_son(ee) = gsn_csm_contour_map(wks_stddev_son,ppt_sd_son,res)
+     plot_stddev_ond(ee) = gsn_csm_contour_map(wks_stddev_ond,ppt_sd_ond,res)
      plot_stddev_ann(ee) = gsn_csm_contour_map(wks_stddev_ann,ppt_sd_ann,res)
      
      sres@gsnLeftString = syear(ee)+"-"+eyear(ee) 
@@ -327,9 +352,11 @@ begin
      plot_mean_djf(ee) = gsn_csm_contour_map(wks_mean,ppt_mean_djf,sres)
      plot_mean_mam(ee) = gsn_csm_contour_map(wks_mean,ppt_mean_mam,sres)
      plot_mean_jja(ee) = gsn_csm_contour_map(wks_mean,ppt_mean_jja,sres)
+     plot_mean_jjas(ee) = gsn_csm_contour_map(wks_mean,ppt_mean_jjas,sres)
      plot_mean_son(ee) = gsn_csm_contour_map(wks_mean,ppt_mean_son,sres)
+     plot_mean_ond(ee) = gsn_csm_contour_map(wks_mean,ppt_mean_ond,sres)
      plot_mean_ann(ee) = gsn_csm_contour_map(wks_mean,ppt_mean_ann,sres)
-     delete([/ppt_sd_djf,ppt_sd_mam,ppt_sd_jja,ppt_sd_son,ppt_sd_ann,ppt_mean_djf,ppt_mean_mam,ppt_mean_jja,ppt_mean_son,ppt_mean_ann,res,sres/])
+     delete([/ppt_sd_djf,ppt_sd_mam,ppt_sd_jja,ppt_sd_jjas,ppt_sd_son,ppt_sd_ond,ppt_sd_ann,ppt_mean_djf,ppt_mean_mam,ppt_mean_jja,ppt_mean_jjas,ppt_mean_son,ppt_mean_ond,ppt_mean_ann,res,sres/])
     
      zres = True
      zres@vpYF = 0.8
@@ -532,9 +559,17 @@ begin
   gsn_panel2(wks_stddev_jja,plot_stddev_jja,(/nrow,ncol/),panres)
   delete(wks_stddev_jja)
   
+  panres@txString = "PR Standard Deviations (JJAS)"
+  gsn_panel2(wks_stddev_jjas,plot_stddev_jjas,(/nrow,ncol/),panres)
+  delete(wks_stddev_jjas)
+  
   panres@txString = "PR Standard Deviations (SON)"
   gsn_panel2(wks_stddev_son,plot_stddev_son,(/nrow,ncol/),panres)
   delete(wks_stddev_son)
+
+  panres@txString = "PR Standard Deviations (OND)"
+  gsn_panel2(wks_stddev_ond,plot_stddev_ond,(/nrow,ncol/),panres)
+  delete(wks_stddev_ond)
   
   panres@txString = "PR Standard Deviations (Annual)"
   gsn_panel2(wks_stddev_ann,plot_stddev_ann,(/nrow,ncol/),panres)
@@ -549,8 +584,14 @@ begin
   panres@txString = "PR Means (JJA)"
   gsn_panel2(wks_mean,plot_mean_jja,(/nrow,ncol/),panres)
   
+  panres@txString = "PR Means (JJAS)"
+  gsn_panel2(wks_mean,plot_mean_jjas,(/nrow,ncol/),panres)
+  
   panres@txString = "PR Means (SON)"
   gsn_panel2(wks_mean,plot_mean_son,(/nrow,ncol/),panres)
+
+  panres@txString = "PR Means (OND)"
+  gsn_panel2(wks_mean,plot_mean_ond,(/nrow,ncol/),panres)
   
   panres@txString = "PR Means (Annual)"
   gsn_panel2(wks_mean,plot_mean_ann,(/nrow,ncol/),panres)
@@ -582,15 +623,19 @@ begin
      system("mv "+OUTDIR+"pr.mean.000001.png "+OUTDIR+"pr.mean.djf.png") 
      system("mv "+OUTDIR+"pr.mean.000002.png "+OUTDIR+"pr.mean.mam.png") 
      system("mv "+OUTDIR+"pr.mean.000003.png "+OUTDIR+"pr.mean.jja.png") 
-     system("mv "+OUTDIR+"pr.mean.000004.png "+OUTDIR+"pr.mean.son.png") 
-     system("mv "+OUTDIR+"pr.mean.000005.png "+OUTDIR+"pr.mean.ann.png")
+     system("mv "+OUTDIR+"pr.mean.000004.png "+OUTDIR+"pr.mean.jjas.png") 
+     system("mv "+OUTDIR+"pr.mean.000005.png "+OUTDIR+"pr.mean.son.png") 
+     system("mv "+OUTDIR+"pr.mean.000006.png "+OUTDIR+"pr.mean.ond.png") 
+     system("mv "+OUTDIR+"pr.mean.000007.png "+OUTDIR+"pr.mean.ann.png")
   else
      system("psplit "+OUTDIR+"pr.mean.ps "+OUTDIR+"pr_m")
      system("mv "+OUTDIR+"pr_m0001.ps "+OUTDIR+"pr.mean.djf.ps") 
      system("mv "+OUTDIR+"pr_m0002.ps "+OUTDIR+"pr.mean.mam.ps") 
      system("mv "+OUTDIR+"pr_m0003.ps "+OUTDIR+"pr.mean.jja.ps") 
-     system("mv "+OUTDIR+"pr_m0004.ps "+OUTDIR+"pr.mean.son.ps") 
-     system("mv "+OUTDIR+"pr_m0005.ps "+OUTDIR+"pr.mean.ann.ps") 
+     system("mv "+OUTDIR+"pr_m0004.ps "+OUTDIR+"pr.mean.jjas.ps") 
+     system("mv "+OUTDIR+"pr_m0005.ps "+OUTDIR+"pr.mean.son.ps") 
+     system("mv "+OUTDIR+"pr_m0006.ps "+OUTDIR+"pr.mean.ond.ps") 
+     system("mv "+OUTDIR+"pr_m0007.ps "+OUTDIR+"pr.mean.ann.ps") 
      system("rm "+OUTDIR+"pr.mean.ps")
   end if
   print("Finished: pr.mean_stddev.ncl")

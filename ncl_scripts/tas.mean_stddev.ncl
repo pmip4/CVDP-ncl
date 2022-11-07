@@ -45,48 +45,64 @@ begin
   wks_stddev_djf = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.stddev.djf")
   wks_stddev_mam = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.stddev.mam")
   wks_stddev_jja = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.stddev.jja")
+  wks_stddev_jjas = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.stddev.jjas")
   wks_stddev_son = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.stddev.son")
+  wks_stddev_ond = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.stddev.ond")
   wks_stddev_ann = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.stddev.ann")
   wks_mean_djf = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.mean.djf")
   wks_mean_mam = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.mean.mam")
   wks_mean_jja = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.mean.jja")
+  wks_mean_jjas = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.mean.jjas")
   wks_mean_son = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.mean.son")
+  wks_mean_ond = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.mean.ond")
   wks_mean_ann = gsn_open_wks(wks_type,getenv("OUTDIR")+"tas.mean.ann")
   
   if (COLORMAP.eq.0) then
      gsn_define_colormap(wks_stddev_djf,"precip3_16lev") 
      gsn_define_colormap(wks_stddev_mam,"precip3_16lev")  
      gsn_define_colormap(wks_stddev_jja,"precip3_16lev") 
+     gsn_define_colormap(wks_stddev_jjas,"precip3_16lev") 
      gsn_define_colormap(wks_stddev_son,"precip3_16lev")  
+     gsn_define_colormap(wks_stddev_ond,"precip3_16lev")  
      gsn_define_colormap(wks_stddev_ann,"precip3_16lev")
      gsn_define_colormap(wks_mean_djf,"ncl_default") 
      gsn_define_colormap(wks_mean_mam,"ncl_default")  
      gsn_define_colormap(wks_mean_jja,"ncl_default") 
+     gsn_define_colormap(wks_mean_jjas,"ncl_default") 
      gsn_define_colormap(wks_mean_son,"ncl_default")  
+     gsn_define_colormap(wks_mean_ond,"ncl_default")  
      gsn_define_colormap(wks_mean_ann,"ncl_default")
   end if
   if (COLORMAP.eq.1) then
      gsn_define_colormap(wks_stddev_djf,"cb_rainbow") 
      gsn_define_colormap(wks_stddev_mam,"cb_rainbow")  
      gsn_define_colormap(wks_stddev_jja,"cb_rainbow") 
+     gsn_define_colormap(wks_stddev_jjas,"cb_rainbow") 
      gsn_define_colormap(wks_stddev_son,"cb_rainbow")  
+     gsn_define_colormap(wks_stddev_ond,"cb_rainbow")  
      gsn_define_colormap(wks_stddev_ann,"cb_rainbow")
      gsn_define_colormap(wks_mean_djf,"BlueDarkRed18") 
      gsn_define_colormap(wks_mean_mam,"BlueDarkRed18")  
      gsn_define_colormap(wks_mean_jja,"BlueDarkRed18") 
+     gsn_define_colormap(wks_mean_jjas,"BlueDarkRed18") 
      gsn_define_colormap(wks_mean_son,"BlueDarkRed18")  
+     gsn_define_colormap(wks_mean_ond,"BlueDarkRed18")  
      gsn_define_colormap(wks_mean_ann,"BlueDarkRed18")     
   end if
 
   plot_mean_djf = new(nsim,"graphic")  
   plot_mean_mam = new(nsim,"graphic")  
   plot_mean_jja = new(nsim,"graphic")  
+  plot_mean_jjas= new(nsim,"graphic")  
   plot_mean_son = new(nsim,"graphic")   
+  plot_mean_ond = new(nsim,"graphic")   
   plot_mean_ann = new(nsim,"graphic")  
   plot_stddev_djf = new(nsim,"graphic")  
   plot_stddev_mam = new(nsim,"graphic")  
   plot_stddev_jja = new(nsim,"graphic")  
+  plot_stddev_jjas= new(nsim,"graphic")  
   plot_stddev_son = new(nsim,"graphic")   
+  plot_stddev_ond = new(nsim,"graphic")   
   plot_stddev_ann = new(nsim,"graphic")  
   do ee = 0,nsim-1
      tas = data_read_in(paths(ee),"TREFHT",syear(ee),eyear(ee))    ; read in data, orient lats/lons correctly, set time coordinate variable up   
@@ -132,6 +148,7 @@ begin
         tas_seas = runave_n_Wrap(tasT,3,0,0)
         tas_seas(0,:,:) = (/ dim_avg_n(tasT(:1,:,:),0) /)
         tas_seas(dimsizes(tasT&time)-1,:,:) = (/ dim_avg_n(tasT(dimsizes(tasT&time)-2:,:,:),0) /)
+        tas_4months = runave_n_Wrap(tasT,4,0,0)
         tas_ann = runave_n_Wrap(tasT,12,0,0)
         ds=dimsizes(tasT)
         tas_4d = reshape(tasT,(/ds(0)/12,12,ds(1),ds(2)/))
@@ -148,7 +165,9 @@ begin
            tas_mean_djf = dim_avg_n_Wrap(tas_seas(0::12,:,:),0)
            tas_mean_mam = dim_avg_n_Wrap(tas_seas(3::12,:,:),0)
            tas_mean_jja = dim_avg_n_Wrap(tas_seas(6::12,:,:),0)
+           tas_mean_jjas= dim_avg_n_Wrap(tas_4months(6::12,:,:),0)
            tas_mean_son = dim_avg_n_Wrap(tas_seas(9::12,:,:),0)
+           tas_mean_ond = dim_avg_n_Wrap(tas_seas(10::12,:,:),0)
            tas_mean_ann = dim_avg_n_Wrap(tas_ann(5::12,:,:),0)
            mtco_mean = dim_avg_n_Wrap(mtco,0)
            mtwa_mean = dim_avg_n_Wrap(mtwa,0)
@@ -159,7 +178,9 @@ begin
              tas_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(0::12,:,:),False,False,0),0)
              tas_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(3::12,:,:),False,False,0),0)
              tas_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(6::12,:,:),False,False,0),0)
+             tas_sd_jjas= dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_4months(6::12,:,:),False,False,0),0)
              tas_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(9::12,:,:),False,False,0),0)
+             tas_sd_ond = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_seas(10::12,:,:),False,False,0),0)
              tas_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),tas_ann(5::12,:,:),False,False,0),0)
              mtco_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),mtco,False,False,0),0)
              mtwa_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,climo_nyrs,1),mtwa,False,False,0),0)
@@ -169,20 +190,24 @@ begin
              tas_sd_djf = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(0::12,:,:),False,False,0),0)
              tas_sd_mam = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(3::12,:,:),False,False,0),0)
              tas_sd_jja = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(6::12,:,:),False,False,0),0)
+             tas_sd_jjas= dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_4months(6::12,:,:),False,False,0),0)
              tas_sd_son = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(9::12,:,:),False,False,0),0)
+             tas_sd_ond = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_seas(10::12,:,:),False,False,0),0)
              tas_sd_ann = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),tas_ann(5::12,:,:),False,False,0),0)
              mtco_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),mtco,False,False,0),0)
              mtwa_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),mtwa,False,False,0),0)
              seasonality_sd = dim_stddev_n_Wrap(dtrend_msg_n(ispan(0,nyr(ee)-1,1),seasonality,False,False,0),0)
            end if
         end if
-        delete([/tas_seas,tas_ann/])
+        delete([/tas_seas,tas_ann,tas_4months/])
      end do
      delete(tas)
      copy_VarMeta(tas_mean_djf,tas_sd_djf)
      copy_VarMeta(tas_mean_mam,tas_sd_mam)
      copy_VarMeta(tas_mean_jja,tas_sd_jja)
+     copy_VarMeta(tas_mean_jjas,tas_sd_jjas)
      copy_VarMeta(tas_mean_son,tas_sd_son)
+     copy_VarMeta(tas_mean_ond,tas_sd_ond)
      copy_VarMeta(tas_mean_ann,tas_sd_ann)
      copy_VarMeta(mtco_mean,mtco_sd)
      copy_VarMeta(mtwa_mean,mtwa_sd)
@@ -216,13 +241,17 @@ begin
         z->tas_spatialmean_djf     = set_varAtts(tas_mean_djf,"tas mean (DJF)","","")
         z->tas_spatialmean_mam     = set_varAtts(tas_mean_mam,"tas mean (MAM)","","")
         z->tas_spatialmean_jja     = set_varAtts(tas_mean_jja,"tas mean (JJA)","","")
+        z->tas_spatialmean_jjas    = set_varAtts(tas_mean_jjas,"tas mean (JJAS)","","")
         z->tas_spatialmean_son     = set_varAtts(tas_mean_son,"tas mean (SON)","","")
+        z->tas_spatialmean_ond     = set_varAtts(tas_mean_ond,"tas mean (OND)","","")
         z->tas_spatialmean_ann     = set_varAtts(tas_mean_ann,"tas mean (annual)","","")
         
         z->tas_spatialstddev_djf     = set_varAtts(tas_sd_djf,"tas standard deviation (DJF)","","")
         z->tas_spatialstddev_mam     = set_varAtts(tas_sd_mam,"tas standard deviation (MAM)","","")
         z->tas_spatialstddev_jja     = set_varAtts(tas_sd_jja,"tas standard deviation (JJA)","","")
+        z->tas_spatialstddev_jjas    = set_varAtts(tas_sd_jjas,"tas standard deviation (JJAS)","","")
         z->tas_spatialstddev_son     = set_varAtts(tas_sd_son,"tas standard deviation (SON)","","")
+        z->tas_spatialstddev_ond     = set_varAtts(tas_sd_ond,"tas standard deviation (OND)","","")
         z->tas_spatialstddev_ann     = set_varAtts(tas_sd_ann,"tas standard deviation (annual)","","")
 
         z->tas_coldestmonth     = set_varAtts(mtco_mean,"mean temperature of the coldest month (average)","","")
@@ -292,7 +321,9 @@ begin
      plot_stddev_djf(ee) = gsn_csm_contour_map(wks_stddev_djf,tas_sd_djf,res)
      plot_stddev_mam(ee) = gsn_csm_contour_map(wks_stddev_mam,tas_sd_mam,res)
      plot_stddev_jja(ee) = gsn_csm_contour_map(wks_stddev_jja,tas_sd_jja,res)
+     plot_stddev_jjas(ee)= gsn_csm_contour_map(wks_stddev_jjas,tas_sd_jjas,res)
      plot_stddev_son(ee) = gsn_csm_contour_map(wks_stddev_son,tas_sd_son,res)
+     plot_stddev_ond(ee) = gsn_csm_contour_map(wks_stddev_son,tas_sd_ond,res)
      plot_stddev_ann(ee) = gsn_csm_contour_map(wks_stddev_ann,tas_sd_ann,res)
      
      sres@gsnLeftString = syear(ee)+"-"+eyear(ee) 
@@ -301,10 +332,11 @@ begin
      plot_mean_djf(ee) = gsn_csm_contour_map(wks_mean_djf,tas_mean_djf,sres)
      plot_mean_mam(ee) = gsn_csm_contour_map(wks_mean_mam,tas_mean_mam,sres)
      plot_mean_jja(ee) = gsn_csm_contour_map(wks_mean_jja,tas_mean_jja,sres)
+     plot_mean_jjas(ee) = gsn_csm_contour_map(wks_mean_jjas,tas_mean_jja,sres)
      plot_mean_son(ee) = gsn_csm_contour_map(wks_mean_son,tas_mean_son,sres)
+     plot_mean_ond(ee) = gsn_csm_contour_map(wks_mean_ond,tas_mean_son,sres)
      plot_mean_ann(ee) = gsn_csm_contour_map(wks_mean_ann,tas_mean_ann,sres)
-     delete([/tas_sd_djf,tas_sd_mam,tas_sd_jja,tas_sd_son,tas_sd_ann,tas_mean_djf,tas_mean_mam,tas_mean_jja,tas_mean_son,tas_mean_ann,res,sres/])
-  end do     
+     delete([/tas_sd_djf,tas_sd_mam,tas_sd_jja,tas_sd_jjas,tas_sd_son,tas_sd_ond,tas_sd_ann,tas_mean_djf,tas_mean_mam,tas_mean_jja,tas_mean_jjas,tas_mean_son,tas_mean_ond,tas_mean_ann,res,sres/])  end do     
      
   panres = True
   panres@gsnMaximize = True  
@@ -344,9 +376,17 @@ begin
   gsn_panel2(wks_stddev_jja,plot_stddev_jja,(/nrow,ncol/),panres)
   delete(wks_stddev_jja)
   
+  panres@txString = "TAS Standard Deviations (JJAS)"
+  gsn_panel2(wks_stddev_jjas,plot_stddev_jjas,(/nrow,ncol/),panres)
+  delete(wks_stddev_jjas)
+  
   panres@txString = "TAS Standard Deviations (SON)"
   gsn_panel2(wks_stddev_son,plot_stddev_son,(/nrow,ncol/),panres)
   delete(wks_stddev_son)
+
+  panres@txString = "TAS Standard Deviations (OND)"
+  gsn_panel2(wks_stddev_ond,plot_stddev_ond,(/nrow,ncol/),panres)
+  delete(wks_stddev_ond)
   
   panres@txString = "TAS Standard Deviations (Annual)"
   gsn_panel2(wks_stddev_ann,plot_stddev_ann,(/nrow,ncol/),panres)
@@ -363,10 +403,18 @@ begin
   panres@txString = "TAS Means (JJA)"
   gsn_panel2(wks_mean_jja,plot_mean_jja,(/nrow,ncol/),panres)
   delete(wks_mean_jja)
+
+  panres@txString = "TAS Means (JJAS)"
+  gsn_panel2(wks_mean_jjas,plot_mean_jjas,(/nrow,ncol/),panres)
+  delete(wks_mean_jjas)
   
   panres@txString = "TAS Means (SON)"
   gsn_panel2(wks_mean_son,plot_mean_son,(/nrow,ncol/),panres)
   delete(wks_mean_son)
+  
+  panres@txString = "TAS Means (OND)"
+  gsn_panel2(wks_mean_ond,plot_mean_ond,(/nrow,ncol/),panres)
+  delete(wks_mean_ond)
   
   panres@txString = "TAS Means (Annual)"
   gsn_panel2(wks_mean_ann,plot_mean_ann,(/nrow,ncol/),panres)
