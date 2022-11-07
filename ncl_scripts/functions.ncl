@@ -1300,10 +1300,11 @@ end
 ; zp0 = path of CVDP scripts, pngsize = size (in ImageMagick units) of png converted from ps
 ;
 undef("image_finalize")
-procedure image_finalize(odir[1]:string,otype[1]:string,max_nt[1]:integer,zp0[1]:string,pngsize[1]:integer)
+procedure image_finalize(odir[1]:string,otype[1]:string,max_nt[1]:integer,zp0[1]:string,pngsize[1]:integer,start_time[1]:string)
 local odir,otype,max_nt,zp0,pngsize,ofiles,ofilesS,ofilesT,gg,filesize,ofiles_png,numPlotsCompleted,numJobsActive,pid,command
 begin
-  ofiles = systemfunc("ls "+odir+"*."+otype)
+  ofiles = systemfunc("find "+odir+" -type f -newermt '"+start_time+"' -name '*."+otype+"'")
+  ;ofiles = systemfunc("ls "+odir+"*."+otype)
   if (otype.ne."png") then
      ofilesS = systemfunc("ls "+outdir+"*."+output_type)
      ofilesT = systemfunc("ls -l "+outdir+"*."+output_type)

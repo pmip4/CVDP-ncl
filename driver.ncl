@@ -67,7 +67,8 @@
 ;========END USER MODIFICATIONS===========================================================
   version = "5.2.0.PMIP"
 
-  print("Starting: Climate Variability Diagnostics Package ("+systemfunc("date")+")")
+  start=systemfunc("date")
+  print("Starting: Climate Variability Diagnostics Package ("+start+")")
 
   complete_list = "psl.nam_nao,psl.pna_npo,tas.trends_timeseries,snd.trends,psl.trends,amo,pdo,sst.indices,pr.trends_timeseries,"+\
                    "psl.sam_psa,sst.mean_stddev,psl.mean_stddev,pr.mean_stddev,sst.trends_timeseries,amoc,tas.mean_stddev,"+\
@@ -139,7 +140,7 @@
      system("   export OUTDIR="+outdir+"; "+ncl_exec+" "+zp+"metrics.ncl")
   end if
       
-  image_finalize(outdir,output_type,max_num_tasks,zp,toint(144*png_scale))    ; trim whitespace, convert to .png (if necessary) and apply watermarks to images
+  image_finalize(outdir,output_type,max_num_tasks,zp,toint(144*png_scale),start)    ; trim whitespace, convert to .png (if necessary) and apply watermarks to images
  
   system("cp "+zp+"cas-cvdp.png "+outdir)
   system("cp "+zp+"banner.png "+outdir)
