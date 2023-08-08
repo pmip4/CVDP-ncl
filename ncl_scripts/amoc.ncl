@@ -527,7 +527,7 @@ begin
            time_lag_cor@units = "months since 0000-01-01 00:00:00"
            time_lag_cor@long_name = "Time"
            time_lag_cor@standard_name = "time"
-           time_lag_cor@calendar = "standard"
+           time_lag_cor@calendar = "360_day"
            time_lag_cor!0 = "time_lag_cor"
            time_lag_cor&time_lag_cor = time_lag_cor
            ccr!0 = "time_lag_cor"
@@ -540,7 +540,7 @@ begin
         TIME@units = "years since "+syear(ee)+"-01-15 00:00:00"
         TIME@long_name = "Time"
         TIME@standard_name = "time"
-        TIME@calendar = "standard"
+        TIME@calendar = "360_day"
         TIME!0 = "TIME"
         TIME&TIME = TIME
         amoc_ts_ann!0 = "TIME"

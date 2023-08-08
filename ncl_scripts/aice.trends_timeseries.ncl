@@ -137,7 +137,7 @@ begin
   time_mon2@units = "months since 0000-01-01 00:00:00"
   time_mon2@long_name = "Time"
   time_mon2@standard_name = "time"
-  time_mon2@calendar = "standard"
+  time_mon2@calendar = "360_day"
   time_mon2!0 = "time_mon2"
   time_mon2&time_mon2 = time_mon2
 

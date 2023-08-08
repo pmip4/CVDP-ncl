@@ -476,7 +476,7 @@ begin
            time_mon1@units = "months since 0000-01-01 00:00:00"
            time_mon1@long_name = "Time"
            time_mon1@standard_name = "time"
-           time_mon1@calendar = "standard"
+           time_mon1@calendar = "360_day"
            time_mon1!0 = "time_mon1"
            time_mon1&time_mon1 = time_mon1
            hov_hi!0 = "time_mon1"
@@ -1086,7 +1086,7 @@ begin
         time_mon2@units = "months since 0000-01-01 00:00:00"
         time_mon2@long_name = "Time"
         time_mon2@standard_name = "time"
-        time_mon2@calendar = "standard"
+        time_mon2@calendar = "360_day"
         time_mon2!0 = "time_mon2"
         time_mon2&time_mon2 = time_mon2
         nino34_mon_sd!0 = "time_mon2"
@@ -1132,7 +1132,7 @@ begin
         time_mon3@units = "months since 0000-01-01 00:00:00"
         time_mon3@long_name = "Time"
         time_mon3@standard_name = "time"
-        time_mon3@calendar = "standard"
+        time_mon3@calendar = "360_day"
         time_mon3!0 = "time_mon3"
         time_mon3&time_mon3 = time_mon3
         ac34!0 = "time_mon3"
