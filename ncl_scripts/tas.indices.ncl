@@ -138,6 +138,7 @@ begin
         if isvar("tas_ind") then
           vname="ipcc_"+region_names(reg_i)+"_tas"
           delete(tas_ind@region_names)
+          delete(tas_ind@abbrevs)
           if AR6_REGIONS then  
             tas_ind@region_abbrev=region_names(reg_i)
             tas_ind@region_name=long_names(reg_i)

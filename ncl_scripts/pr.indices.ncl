@@ -122,7 +122,7 @@ begin
 
       if AR6_REGIONS then
         ;Use the special extract_all_AR5_regions function to compute all the area averages
-        all_region_avgs=extract_all_AR6_regions(tas,False)
+        all_region_avgs=extract_all_AR6_regions(pr,False)
         all_region_climos=extract_all_AR6_regions(climo,False) 
         region_names=all_region_avgs@abbrevs
         long_names=all_region_avgs@region_names
@@ -150,6 +150,7 @@ begin
         if isvar("pr_ind") then
           vname="ipcc_"+region_names(reg_i)+"_pr"
           delete(pr_ind@region_names)
+          delete(pr_ind@abbrevs)
           if AR6_REGIONS then  
             pr_ind@region_abbrev=region_names(reg_i)
             pr_ind@region_name=long_names(reg_i)

@@ -407,8 +407,8 @@ begin
     regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\ ;global domains
                  "ALA","AMZ","CAM","CAS","CEU","CGI","CNA","EAF","EAS","ENA",\ ;SREX regions
                  "MED","NAS","NAU","NEB","NEU","SAF","SAH","SAS_lnd","SAS_ocn","SAU",\
-                  "SEA_lnd","SEA_ocn","SSA","TIB","WAF","WAS","WNA","WSA",\
-                 "ANT_lnd","ARC_lnd","ANT_ocn","ARC_ocn","CAR","NTP","STP","ETP","WIO", ;and the new AR5 regions
+                 "SEA_lnd","SEA_ocn","SSA","TIB","WAF","WAS","WNA","WSA",\
+                 "ANT_lnd","ARC_lnd","ANT_ocn","ARC_ocn","CAR","NTP","STP","ETP","WIO",\ ;and the new AR5 regions
                  "NH_highlats_all","NH_highlats_lnd","NH_highlats_ocn","NH_midlats_all","NH_midlats_lnd",\
                  "NH_midlats_ocn","NH_tropics_all","NH_tropics_lnd","NH_tropics_ocn","SH_tropics_all",\
                  "SH_tropics_lnd","SH_tropics_ocn","SH_midlats_all","SH_midlats_lnd","SH_midlats_ocn",\
