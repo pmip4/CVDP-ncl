@@ -19,11 +19,11 @@
 undef("extract_all_AR6_regions")
 function extract_all_AR6_regions(variable:float,options:logical)
 ; the variable is expected to have its rightmost dimensions named as lat and lon
-; the region_names must follow AR6 terminology, or have the special name of "ALL"
+; the abbrevs must follow AR6 terminology, or have the special name of "ALL"
 ; if options=True, then it can have certain attributes attached to it:
 ;    options@stddev [if True, returns area-weighted standard deviations rather than averages]
 ;    options@VERBOSE [if True, provides more information about how progress is going] 
-local ds,a,lsdata,ls_mask,land_var,sea_var,AR6_masks,AR6_names,AR6_numbers,region_mask,defn_BOTH,defn_LAND,defn_SEA,MULTIPLY_DEF,coswgt,num_regions,overLAND,overSEA,overALL,reg_id,i,reg_i,missed
+local ds,a,lsdata,ls_mask,land_var,sea_var,AR6_masks,AR6_abbrevs,AR6_numbers,region_mask,defn_BOTH,defn_LAND,defn_SEA,MULTIPLY_DEF,coswgt,num_regions,overLAND,overSEA,overALL,reg_id,i,reg_i,missed
 begin
   ;start with some error checking
   ds=dimsizes(variable)
@@ -53,7 +53,8 @@ begin
   ;  so that this function can work in isolation outside of CVDP (by presuming mask file in current directory)
   a=addfile(AR6_file_location,"r")
   AR6_masks=a->AR6_masks
-  AR6_names=AR6_masks@abbrevs
+  AR6_abbrevs=AR6_masks@abbrevs
+  AR6_region_names=AR6_masks@region_names
   AR6_numbers=AR6_masks@number
   region_mask=landsea_mask(AR6_masks,variable&lat,variable&lon)
   defn_LAND=a->LAND
@@ -73,17 +74,19 @@ begin
   end if
 
   ;setup the variables over which to perform the looping...
-  num_regions=dimsizes(AR6_names)+sum(MULTIPLY_DEF)+3+18;3 for global, 2 each for (Ant)arctic, 18 for the lat_bands
+  num_regions=dimsizes(AR6_abbrevs)+sum(MULTIPLY_DEF)+3+18; Iturbide regions and 3 for global + 18 for the lat_bands
+  abbrevs=new(num_regions,string)
   region_names=new(num_regions,string)
   if options.and.isatt(options,"VERBOSE").and.(options@VERBOSE) then 
-    print("extract_all_AR6_regions: created num_regions and region_names")
+    print("extract_all_AR6_regions: created num_regions and abbrevs")
   end if
   overLAND=new(num_regions,logical)
   overLAND=(/False/)
   overSEA=overLAND
   overALL=overLAND
    ;specify the manual ones
-  region_names(0:2)="GLOBAL"
+  abbrevs(0:2)="GLOBAL"
+  region_names(0:2)=(/"Global","Global (land only)","Global (ocean only)"/)
   overALL(0)=True
   overLAND(1)=True
   overSEA(2)=True
@@ -92,15 +95,17 @@ begin
   end if
   ;specify the ones contained in the nc file
   reg_id=3
-  do i=0,dimsizes(AR6_names)-1
+  do i=0,dimsizes(AR6_abbrevs)-1
     if MULTIPLY_DEF(i).eq.1 then
       ;know that these regions are both land or sea
-      region_names(reg_id:reg_id+1)=(/AR6_names(i)/)
+      abbrevs(reg_id:reg_id+1)=(/AR6_abbrevs(i)/)
+      region_names(reg_id:reg_id+1)=(/AR6_region_names(i)+(/" (land only)"," (ocean only)"/)/)
       overLAND(reg_id)=True
       overSEA(reg_id+1)=True
       reg_id=reg_id+2
     else
-      region_names(reg_id)=AR6_names(i)
+      abbrevs(reg_id)=AR6_abbrevs(i)
+      region_names(reg_id)=(/AR6_region_names(i)/)
       overALL(reg_id)=defn_BOTH(i)
       overLAND(reg_id)=defn_LAND(i)
       overSEA(reg_id)=defn_SEA(i)
@@ -108,8 +113,10 @@ begin
     end if
   end do
   band_names=(/"NH_highlats","NH_midlats","NH_tropics","SH_tropics","SH_midlats","SH_highlats"/)
+  band_long_names=(/"60-90oN","30-60oN","0-30oN","0-30oS","30-60oS","60-90oS"/)
   do i=0,dimsizes(band_names)-1
-    region_names(reg_id:reg_id+2)=band_names(i)
+    abbrevs(reg_id:reg_id+2)=band_names(i)
+    region_names(reg_id:reg_id+2)=(/band_long_names(i)+(/" (all)"," (land only)"," (ocean only)"/)/)
     overALL(reg_id)=True
     overLAND(reg_id+1)=True
     overSEA(reg_id+2)=True
@@ -131,22 +138,22 @@ begin
 
   do reg_i=0,num_regions-1 
     if options.and.isatt(options,"VERBOSE").and.(options@VERBOSE) then 
-      print("extract_all_AR6_regions: On "+reg_i+", which is "+region_names(reg_i))
+      print("extract_all_AR6_regions: On "+reg_i+", which is "+abbrevs(reg_i))
     end if
     missed=True
-    if any(band_names.eq.region_names(reg_i)) then
+    if any(band_names.eq.abbrevs(reg_i)) then
       masked_var=new(dimsizes(variable),typeof(variable), variable@_FillValue)
       copy_VarMeta(variable,masked_var)
       Nlats=(/90.,60.,30.,0.,-30.,-60./)
       Slats=(/60.,30.,0.,-30.,-60.,-90./)
-      band_ind=ind(band_names.eq.region_names(reg_i))
+      band_ind=ind(band_names.eq.abbrevs(reg_i))
       if overALL(reg_i) then
         masked_var(:,{Slats(band_ind):Nlats(band_ind)},:)=(/variable(:,{Slats(band_ind):Nlats(band_ind)},:)/)
         output(reg_i,:) = (/wgt_areaave_Wrap(masked_var,coswgt,1.0,0)/)
         if options.and.isatt(options,"stddev").and.(options@stddev) then
           output(reg_i,:)=(/wgt_arearmse(variable,conform(variable,output(reg_i,:),0),coswgt, 1.0, 0)/)
         end if
-        region_names(reg_i)=region_names(reg_i)+"_all"  
+        abbrevs(reg_i)=abbrevs(reg_i)+"_all"  
         missed=False
       end if
       if overLAND(reg_i) then
@@ -155,7 +162,7 @@ begin
         if options.and.isatt(options,"stddev").and.(options@stddev) then
           output(reg_i,:)=(/wgt_arearmse(masked_var,conform(masked_var,output(reg_i,:),0),coswgt, 1.0, 0)/)
         end if
-        region_names(reg_i)=region_names(reg_i)+"_lnd"  
+        abbrevs(reg_i)=abbrevs(reg_i)+"_lnd"  
         missed=False
       end if
       if overSEA(reg_i) then
@@ -164,18 +171,18 @@ begin
         if options.and.isatt(options,"stddev").and.(options@stddev) then
           output(reg_i,:)=(/wgt_arearmse(masked_var,conform(masked_var,output(reg_i,:),0),coswgt, 1.0, 0)/)
         end if
-        region_names(reg_i)=region_names(reg_i)+"_ocn"  
+        abbrevs(reg_i)=abbrevs(reg_i)+"_ocn"  
         missed=False
       end if
       delete(masked_var)
     else
-      if region_names(reg_i).eq."GLOBAL" then
+      if abbrevs(reg_i).eq."GLOBAL" then
         if overALL(reg_i) then
           output(reg_i,:) = (/wgt_areaave_Wrap(variable,coswgt,1.0,0)/)
           if options.and.isatt(options,"stddev").and.(options@stddev) then
             output(reg_i,:)=(/wgt_arearmse(variable,conform(variable,output(reg_i,:),0),coswgt, 1.0, 0)/)
           end if
-          region_names(reg_i)="GLOBAL_all"  
+          abbrevs(reg_i)="GLOBAL_all"  
           missed=False
         end if
         if overLAND(reg_i) then
@@ -183,7 +190,7 @@ begin
           if options.and.isatt(options,"stddev").and.(options@stddev) then
             output(reg_i,:)=(/wgt_arearmse(land_var,conform(land_var,output(reg_i,:),0),coswgt, 1.0, 0)/)
           end if
-          region_names(reg_i)="GLOBAL_lnd"  
+          abbrevs(reg_i)="GLOBAL_lnd"  
           missed=False
         end if
         if overSEA(reg_i) then
@@ -191,11 +198,11 @@ begin
           if options.and.isatt(options,"stddev").and.(options@stddev) then
             output(reg_i,:)=(/wgt_arearmse(sea_var,conform(sea_var,output(reg_i,:),0),coswgt, 1.0, 0)/)
           end if
-          region_names(reg_i)="GLOBAL_ocn"  
+          abbrevs(reg_i)="GLOBAL_ocn"  
           missed=False
         end if
       else
-        this_num=AR6_numbers(ind(AR6_names.eq.region_names(reg_i)))
+        this_num=AR6_numbers(ind(AR6_abbrevs.eq.abbrevs(reg_i)))
         if overALL(reg_i) then
           masked_var = mask(variable,region_mask.eq.this_num,True)
           output(reg_i,:) = (/wgt_areaave_Wrap(masked_var,coswgt,1.0,0)/)
@@ -210,8 +217,8 @@ begin
           if options.and.isatt(options,"stddev").and.(options@stddev) then
             output(reg_i,:)=(/wgt_arearmse(masked_var,conform(masked_var,output(reg_i,:),0),coswgt, 1.0, 0)/)
           end if
-          if num(region_names.eq.(region_names(reg_i))).eq.2 then
-            region_names(reg_i)=region_names(reg_i)+"_lnd"  
+          if num(abbrevs.eq.(abbrevs(reg_i))).eq.2 then
+            abbrevs(reg_i)=abbrevs(reg_i)+"_lnd"  
           end if
           missed=False
         end if
@@ -221,16 +228,16 @@ begin
           if options.and.isatt(options,"stddev").and.(options@stddev) then
             output(reg_i,:)=(/wgt_arearmse(masked_var,conform(masked_var,output(reg_i,:),0),coswgt, 1.0, 0)/)
           end if
-          if region_names(reg_i-1).eq.(region_names(reg_i)+"_lnd") then
+          if abbrevs(reg_i-1).eq.(abbrevs(reg_i)+"_lnd") then
             ;if we're in this loop and the previous one was a _lnd, thn this must be an ocean equivalent
-            region_names(reg_i)=region_names(reg_i)+"_ocn"  
+            abbrevs(reg_i)=abbrevs(reg_i)+"_ocn"  
           end if
           missed=False
         end if
       end if
     end if
     if missed then
-      print("For reg_i of "+reg_i+", I didn't do anything. region_name="+region_names(reg_i)+" with "+overALL(reg_i)+","+overLAND(reg_i)+","+overSEA(reg_i))
+      print("For reg_i of "+reg_i+", I didn't do anything. abbrev="+abbrevs(reg_i)+" with "+overALL(reg_i)+","+overLAND(reg_i)+","+overSEA(reg_i))
       exit
     end if
   end do
@@ -244,6 +251,7 @@ begin
     output&month=variable&month
   end if
   copy_VarAtts(variable, output)
-  output@region_names=str_join(region_names,",")
+  output@abbrevs=abbrevs
+  output@region_names=region_names
   return(output)
 end

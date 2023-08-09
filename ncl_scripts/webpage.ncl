@@ -399,26 +399,61 @@ begin
   write_table(OUTDIR+"index.html","a",add_ts_txt,"%s")
   delete([/add_ts_txt,txt/])
 
-  ;Populate the ipcc_reg table
-  txt = new(100,"string")
-  txt(0) = table_top_txt
-  txt(1) = "<h3 class="+quote+"display-6"+quote+">IPCC AR5 Region Timeseries</h3>"
-  regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\ ;global domains
-               "ALA","AMZ","CAM","CAS","CEU","CGI","CNA","EAF","EAS","ENA",\ ;SREX regions
-               "MED","NAS","NAU","NEB","NEU","SAF","SAH","SAS_lnd","SAS_ocn","SAU",\
-               "SEA_lnd","SEA_ocn","SSA","TIB","WAF","WAS","WNA","WSA",\
-               "ANT_lnd","ARC_lnd","ANT_ocn","ARC_ocn","CAR","NTP","STP","ETP","WIO"/) ;and the new regions
-  do reg_i=0,dimsizes(regnames)-1
-    txt(2+reg_i) = "<tr><td> "+regnames(reg_i)+" </td>"+\
-               "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_tas.timeseries.png",regnames(reg_i)+" temp.")+"</td>"+\
-               "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_pr.timeseries.png",regnames(reg_i)+" precip.")+"</td></tr>"
-  end do
-  txt(98)=table_bottom_txt
-  txt(99)=""
-  ipcc_reg_txt=[/txt(ind(.not.ismissing(txt)))/]
-  write_table(OUTDIR+"index.html","a",ipcc_reg_txt,"%s")
-  delete([/ipcc_reg_txt,txt/])
-  
+  ;Populate the ipcc_reg table if any AR5 images are present...
+  if (isfilepresent2(OUTDIR+"ipcc_AMZ_tas.timeseries.png") .or. isfilepresent2(OUTDIR+"ipcc_AMZ_pr.timeseries.png")) then
+    txt = new(100,"string")
+    txt(0) = table_top_txt
+    txt(1) = "<h3 class="+quote+"display-6"+quote+">Regional Timeseries</h3>"
+    regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\ ;global domains
+                 "ALA","AMZ","CAM","CAS","CEU","CGI","CNA","EAF","EAS","ENA",\ ;SREX regions
+                 "MED","NAS","NAU","NEB","NEU","SAF","SAH","SAS_lnd","SAS_ocn","SAU",\
+                  "SEA_lnd","SEA_ocn","SSA","TIB","WAF","WAS","WNA","WSA",\
+                 "ANT_lnd","ARC_lnd","ANT_ocn","ARC_ocn","CAR","NTP","STP","ETP","WIO", ;and the new AR5 regions
+                 "NH_highlats_all","NH_highlats_lnd","NH_highlats_ocn","NH_midlats_all","NH_midlats_lnd",\
+                 "NH_midlats_ocn","NH_tropics_all","NH_tropics_lnd","NH_tropics_ocn","SH_tropics_all",\
+                 "SH_tropics_lnd","SH_tropics_ocn","SH_midlats_all","SH_midlats_lnd","SH_midlats_ocn",\
+                 "SH_highlats_all","SH_highlats_lnd","SH_highlats_ocn"/) ; and the latitude bands
+    do reg_i=0,dimsizes(regnames)-1
+       txt(2+reg_i) = "<tr><td> "+regnames(reg_i)+" </td>"+\
+                "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_tas.timeseries.png",regnames(reg_i)+" temp.")+"</td>"+\
+                "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_pr.timeseries.png",regnames(reg_i)+" precip.")+"</td></tr>"
+    end do
+    txt(98)=table_bottom_txt
+    txt(99)=""
+    ipcc_reg_txt=[/txt(ind(.not.ismissing(txt)))/]
+    write_table(OUTDIR+"index.html","a",ipcc_reg_txt,"%s")
+    delete([/ipcc_reg_txt,txt/])
+   end if
+   
+  ;Populate the ipcc_reg table if any AR6 images are present...
+  if (isfilepresent2(OUTDIR+"ipcc_MDG_tas.timeseries.png") .or. isfilepresent2(OUTDIR+"ipcc_MDG_pr.timeseries.png")) then
+    txt = new(100,"string")
+    txt(0) = table_top_txt
+    txt(1) = "<h3 class="+quote+"display-6"+quote+">Regional Timeseries</h3>"
+    regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\ ;global regions
+               "GIC","NWN","NEN","WNA","CNA","ENA","NCA","SCA","CAR_lnd","CAR_ocn","NWS","NSA","NES",\ ;Iturbide et al (2020) land regions
+               "SAM","SWS","SES","SSA","NEU","WCE","EEU","MED_lnd","MED_ocn","SAH","WAF","CAF","NEAF",\
+               "SEAF","WSAF","ESAF","MDG","RAR","WSB","ESB","RFE","WCA","ECA","TIB","EAS","ARP","SAS",\
+               "SEA_lnd","SEA_ocn","NAU","CAU","EAU","SAU","NZ","EAN","WAN",\
+               "ARO","NPO","EPO","SPO","NAO","EAO","SAO","ARS","BOB","EIO","SIO","SOO",\ ;Iturbide et al (2020) oceans
+               "NH_highlats_all","NH_highlats_lnd","NH_highlats_ocn",\ ; Latitude bands
+               "NH_midlats_all","NH_midlats_lnd","NH_midlats_ocn",\
+               "NH_tropics_all","NH_tropics_lnd","NH_tropics_ocn",\
+               "SH_tropics_all","SH_tropics_lnd","SH_tropics_ocn",\
+               "SH_midlats_all","SH_midlats_lnd","SH_midlats_ocn",\
+               "SH_highlats_all","SH_highlats_lnd","SH_highlats_ocn"/)
+    do reg_i=0,dimsizes(regnames)-1
+       txt(2+reg_i) = "<tr><td> "+regnames(reg_i)+" </td>"+\
+                "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_tas.timeseries.png",regnames(reg_i)+" temp.")+"</td>"+\
+                "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_pr.timeseries.png",regnames(reg_i)+" precip.")+"</td></tr>"
+    end do
+    txt(98)=table_bottom_txt
+    txt(99)=""
+    ipcc_reg_txt=[/txt(ind(.not.ismissing(txt)))/]
+    write_table(OUTDIR+"index.html","a",ipcc_reg_txt,"%s")
+    delete([/ipcc_reg_txt,txt/])
+  end if
+
   ;add the table bottom and tidy up...
   write_table(OUTDIR+"index.html","a",[/"<br>","</body></html>"/],"%s")
   delete([/quote,names,na,nsim_noobs/])
@@ -483,7 +518,8 @@ begin
   txt(50) = "<tr><td><b>AMO</b> (Atlantic Multidecadal Oscillation)</td>"  
   txt(51) = "<td>Monthly index timeseries defined as area-weighted SST* anomalies averaged over the North Atlantic (0:60&deg;N, 80&deg;W:0&deg;E), where SST* denotes that the global (60&deg;S:60&deg;N) mean SST anomaly has been removed at each timestep. Pattern created by regressing SST* anomalies onto the index timeseries and smoothing with a 9-point spatial filter. Low pass-filtered timeseries (black curve superimposed on the monthly timeseries) is based on a a 61-month running mean. Based on Trenberth, K. E., and D. J. Shea, 2006: Atlantic hurricanes and natural variability in 2005, <i>Geophys. Res. Lett.</i>, 33, L12704, doi:10.1029/2006GL026894. Low-pass filtered regression maps ("+quote+"Regr LP"+quote+") use a 10-year running mean on both the index timeseries and the field being regressed. For more information on the AMO see the <a href="+quote+"https://climatedataguide.ucar.edu/climate-data/atlantic-multi-decadal-oscillation-amo?qt-climatedatasetmaintabs=1"+quote+" target="+quote+"_blank"+quote+">Climate Data Guide</a>.</td></tr>"
   txt(52) = "<tr><td><b>AMOC</b></td>"
-  txt(53) = "<td>The Atlantic Meridional Overturning Circulation (AMOC) is defined as the oceanic meridional mass transport (Sv) in the Atlantic sector. To compute AMOC, we follow the methods of Danabasoglu et al. (2012). Here we use annual averages of the AMOC, weighted by the cosine of the latitude and vertical extent of each model layer. Areas in which AMOC variance is low (standard deviation < 1e-6 Sv) are set to missing values for clarity. The leading EOF and associated principal component (PC) timeseries are computed over the Atlantic basin from 33&deg;S to 90&deg;N. The AMOC patterns are created by regressing the AMOC anomalies (in Sv) onto the normalized PC timeseries. The SST/TAS patterns associated with AMOC variations are created by regressing TAS/SST anomalies (in Celsius) at each grid box over the globe onto the normalized AMOC PC timeseries. A 15-point low-pass Lanczos filter is applied to the AMOC PC (and AMO) timeseries prior to computing lead/lag correlations, with a minimum of 90 years of data required. The data are not detrended (unlike Danabasoglu et al., 2012). See Danabasoglu, G., S. G. Yeager, Y. -O. Kwon, J. J. Tribbia, A. S. Phillips, and J. W. Hurrell, 2012. Variability of the Atlantic Meridional Overturning Circulation in CCSM4. J. Climate, 25, 5153-5172, doi: 10.1175/JCLI-D-11-00463.1.<br><br>For CCSM4 and CESM1, the MOC variable is read in, the Eulerian Mean, Eddy-Induced and Submeso components are summed, and the Atlantic Ocean + Mediterranean Sea + Labrador Sea + GIN Sea + Arctic Ocean + Hudson Bay transport region is selected. For CCSM2 and CCSM3 the same transport region is selected but only the Eulerian Mean component is used as that is all that is available. For CMIP5 (CMIP6) data the msftmyz (msftmz) variable is read in and the atlantic_arctic_ocean basin is used. For CMIP3 data, the stfmmc variable is read in and the atlantic_ocean geo_region is used.</td></tr>" 
+  ; txt(53) = "<td>The Atlantic Meridional Overturning Circulation (AMOC) is defined as the oceanic meridional mass transport (Sv) in the Atlantic sector. To compute AMOC, we follow the methods of Danabasoglu et al. (2012). Here we use annual averages of the AMOC, weighted by the cosine of the latitude and vertical extent of each model layer. Areas in which AMOC variance is low (standard deviation < 1e-6 Sv) are set to missing values for clarity. The leading EOF and associated principal component (PC) timeseries are computed over the Atlantic basin from 33&deg;S to 90&deg;N. The AMOC patterns are created by regressing the AMOC anomalies (in Sv) onto the normalized PC timeseries. The SST/TAS patterns associated with AMOC variations are created by regressing TAS/SST anomalies (in Celsius) at each grid box over the globe onto the normalized AMOC PC timeseries. A 15-point low-pass Lanczos filter is applied to the AMOC PC (and AMO) timeseries prior to computing lead/lag correlations, with a minimum of 90 years of data required. The data are not detrended (unlike Danabasoglu et al., 2012). See Danabasoglu, G., S. G. Yeager, Y. -O. Kwon, J. J. Tribbia, A. S. Phillips, and J. W. Hurrell, 2012. Variability of the Atlantic Meridional Overturning Circulation in CCSM4. J. Climate, 25, 5153-5172, doi: 10.1175/JCLI-D-11-00463.1.<br><br>For CCSM4 and CESM1, the MOC variable is read in, the Eulerian Mean, Eddy-Induced and Submeso components are summed, and the Atlantic Ocean + Mediterranean Sea + Labrador Sea + GIN Sea + Arctic Ocean + Hudson Bay transport region is selected. For CCSM2 and CCSM3 the same transport region is selected but only the Eulerian Mean component is used as that is all that is available. For CMIP5 (CMIP6) data the msftmyz (msftmz) variable is read in and the atlantic_arctic_ocean basin is used. For CMIP3 data, the stfmmc variable is read in and the atlantic_ocean geo_region is used.</td></tr>" 
+  txt(53) = "<td>The Atlantic Meridional Overturning Circulation (AMOC) is defined as the oceanic meridional mass transport (Sv) in the Atlantic sector. To compute AMOC time series, we take the maximum meridional overturning streamfunction at 30oN, below 500m. This is a deviation from the original approach by Phillips et al (2014), which adopted the method of Danabasoglu et al (2012). This deviation is documented by Zhoa et al (2022), and was motivated by the past2k runs for which the EOF-based approach appears unhelpful. The AMOC patterns are created by regressing the AMOC anomalies (in Sv) onto the AMOC timeseries. The SST/TAS patterns associated with AMOC variations are created by regressing TAS/SST anomalies (in Celsius) at each grid box over the globe onto the AMOC timeseries. A 15-point low-pass Lanczos filter is applied to the AMOC (and AMO) timeseries prior to computing lead/lag correlations, with a minimum of 90 years of data required. The data are not detrended (unlike Danabasoglu et al., 2012). See Danabasoglu, G., S. G. Yeager, Y. -O. Kwon, J. J. Tribbia, A. S. Phillips, and J. W. Hurrell, 2012. Variability of the Atlantic Meridional Overturning Circulation in CCSM4. J. Climate, 25, 5153-5172, doi: 10.1175/JCLI-D-11-00463.1.<br><br>For CCSM4 and CESM1, the MOC variable is read in, the Eulerian Mean, Eddy-Induced and Submeso components are summed, and the Atlantic Ocean + Mediterranean Sea + Labrador Sea + GIN Sea + Arctic Ocean + Hudson Bay transport region is selected. For CCSM2 and CCSM3 the same transport region is selected but only the Eulerian Mean component is used as that is all that is available. For CMIP5 (CMIP6) data the msftmyz (msftmz) variable is read in and the atlantic_arctic_ocean basin is used. For CMIP3 data, the stfmmc variable is read in and the atlantic_ocean geo_region is used. See Zhao, A., Brierley, C. M., Jiang, Z., Eyles, R., Oyarzún, D., and Gomez-Dans, J.: Analysing the PMIP4-CMIP6 collection: a workflow and tool (pmip_p2fvar_analyzer v1), Geosci. Model Dev., 15, 2475-2488, https://doi.org/10.5194/gmd-15-2475-2022, 2022. </td></tr>" 
 
   txt(55) = "<tr><td><b>NAM</b> (Northern Annular Mode)</td>"  
   txt(56) = "<td>Seasonal/annual PSL averages are formed, square root of the cosine of the latitude weighting is applied, and then the leading EOF and associated principal component (PC) timeseries are computed over 20:90&deg;N, 0:360&deg;E. Pattern created by regressing global PSL anomalies (in hPa) onto normalized PC timeseries. Based on Hurrell, J. W., and C. Deser, 2009: North Atlantic climate variability: The role of the North Atlantic Oscillation. <i>J. Mar. Syst.</i>, 78, 28-41, doi:10.1016/j.jmarsys.2008.11.026. Also see Thompson, D. W. J., and J. M. Wallace, 2000: Annular modes in the extratropical circulation. Part I: Month-to-month variability. <i>J. Climate</i>, 13, 1000-1016.</td></tr>"  
