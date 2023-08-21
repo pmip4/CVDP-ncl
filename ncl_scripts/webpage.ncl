@@ -430,7 +430,25 @@ begin
     txt = new(100,"string")
     txt(0) = table_top_txt
     txt(1) = "<h3 class="+quote+"display-6"+quote+">Regional Timeseries</h3>"
-    regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\ ;global regions
+    nice_regnames=(/"Global (land & ocean)","Global (land only)","Global (ocean only)",\ ;global regions
+               "Greenland/Iceland", "N.W. North-America", "N.E. North-America", "W.North-America", "C. North-America",\
+               "E. North-America", "N. Central-America", "S. Central-America", "Caribbean", "N.W. South-America",\
+               "N. South-America", "N.E. South-America", "South-American-Monsoon", "S.W. South-America", "S.E. South-America",\
+               "S. South-America", "N. Europe", "West & Central-Europe", "E. Europe", "Mediterranean", "Sahara", "Western Africa",\
+               "Central Africa", "N. Eastern Africa", "S. Eastern-Africa", "W. Southern Africa", "E. Southern Africa",\
+               "Madagascar", "Russian Arctic", "W. Siberia", "E. Siberia", "Russian Far-East",\
+               "W. Central Asia", "E. Central Asia", "Tibetan Plateau", "E. Asia", "Arabian Peninsula","S. Asia","S.E. Asia",\
+               "N. Australia", "C. Australia", "E. Australia", "S. Australia","New Zealand", "E. Antarctica", "W. Antarctica",\
+               "Arctic Ocean", "N. Pacific", "Equatorial Pacific", "S. Pacific", "N. Atlantic",\
+               "Equat. Atlantic", "S. Atlantic", "Arabian Sea", "Bay of Bengal",\
+               "Equat. Indian Ocean", "S. Indian Ocean", "Southern Ocean",\
+               "NH High Lats (all)","NH High Lats (land)","NH High Lats (ocean)",\ ; Latitude bands
+               "NH Mid-Lats (all)","NH Mid-Lats (land)","NH Mid-Lats (ocean)",\
+               "NH Tropics (all)","NH Tropics (land)","NH Tropics (ocean)",\
+               "SH Tropics (all)","SH Tropics (land)","SH Tropics (ocean)",\
+               "SH Mid-lats (all)","SH Mid-lats (land)","SH Mid-Lats (ocean)",\
+               "SH High Lats (all)","SH High lats (land)","SH High Lats (ocean)"/)
+    regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\
                "GIC","NWN","NEN","WNA","CNA","ENA","NCA","SCA","CAR_lnd","CAR_ocn","NWS","NSA","NES",\ ;Iturbide et al (2020) land regions
                "SAM","SWS","SES","SSA","NEU","WCE","EEU","MED_lnd","MED_ocn","SAH","WAF","CAF","NEAF",\
                "SEAF","WSAF","ESAF","MDG","RAR","WSB","ESB","RFE","WCA","ECA","TIB","EAS","ARP","SAS",\
@@ -443,7 +461,7 @@ begin
                "SH_midlats_all","SH_midlats_lnd","SH_midlats_ocn",\
                "SH_highlats_all","SH_highlats_lnd","SH_highlats_ocn"/)
     do reg_i=0,dimsizes(regnames)-1
-       txt(2+reg_i) = "<tr><td> "+regnames(reg_i)+" </td>"+\
+       txt(2+reg_i) = "<tr><td> "+nice_regnames(reg_i)+" </td>"+\
                 "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_tas.timeseries.png",regnames(reg_i)+" temp.")+"</td>"+\
                 "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_pr.timeseries.png",regnames(reg_i)+" precip.")+"</td></tr>"
     end do
