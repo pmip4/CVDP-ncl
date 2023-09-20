@@ -83,8 +83,8 @@ begin
      cpath0 = stringtochar(zpath)
      if (any(cpath0.eq.tochar("*")).or.any(cpath0.eq.tochar("{"))) then   ; check for "*" and "{" denoting multiple files
         tfiles = systemfunc("ls "+zpath+" 2> /dev/null")   ; /dev/null suppresses all standard error output
-        if (ismissing(zpath) ) then
-           print("File missing, creating blank array of data. View "+vn+" namelist for details.")
+        if (ismissing(tfiles) ) then
+           print("File missing in "+zpath+" -- creating blank array of data")
            arr = create_empty_array(yearS,yearE,1,12,"time_lat_lon")
            sydata = yearS     ; assign these variables based on yearS/yearE provided in namelist. Doesn't matter 
            eydata = yearE     ; as data array is totally missing..  
