@@ -398,32 +398,6 @@ begin
   add_ts_txt=[/txt(ind(.not.ismissing(txt)))/]
   write_table(OUTDIR+"index.html","a",add_ts_txt,"%s")
   delete([/add_ts_txt,txt/])
-
-  ;Populate the ipcc_reg table if any AR5 images are present...
-  if (isfilepresent2(OUTDIR+"ipcc_AMZ_tas.timeseries.png") .or. isfilepresent2(OUTDIR+"ipcc_AMZ_pr.timeseries.png")) then
-    txt = new(100,"string")
-    txt(0) = table_top_txt
-    txt(1) = "<h3 class="+quote+"display-6"+quote+">Regional Timeseries</h3>"
-    regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\ ;global domains
-                 "ALA","AMZ","CAM","CAS","CEU","CGI","CNA","EAF","EAS","ENA",\ ;SREX regions
-                 "MED","NAS","NAU","NEB","NEU","SAF","SAH","SAS_lnd","SAS_ocn","SAU",\
-                 "SEA_lnd","SEA_ocn","SSA","TIB","WAF","WAS","WNA","WSA",\
-                 "ANT_lnd","ARC_lnd","ANT_ocn","ARC_ocn","CAR","NTP","STP","ETP","WIO",\ ;and the new AR5 regions
-                 "NH_highlats_all","NH_highlats_lnd","NH_highlats_ocn","NH_midlats_all","NH_midlats_lnd",\
-                 "NH_midlats_ocn","NH_tropics_all","NH_tropics_lnd","NH_tropics_ocn","SH_tropics_all",\
-                 "SH_tropics_lnd","SH_tropics_ocn","SH_midlats_all","SH_midlats_lnd","SH_midlats_ocn",\
-                 "SH_highlats_all","SH_highlats_lnd","SH_highlats_ocn"/) ; and the latitude bands
-    do reg_i=0,dimsizes(regnames)-1
-       txt(2+reg_i) = "<tr><td> "+regnames(reg_i)+" </td>"+\
-                "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_tas.timeseries.png",regnames(reg_i)+" temp.")+"</td>"+\
-                "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_pr.timeseries.png",regnames(reg_i)+" precip.")+"</td></tr>"
-    end do
-    txt(98)=table_bottom_txt
-    txt(99)=""
-    ipcc_reg_txt=[/txt(ind(.not.ismissing(txt)))/]
-    write_table(OUTDIR+"index.html","a",ipcc_reg_txt,"%s")
-    delete([/ipcc_reg_txt,txt/])
-   end if
    
   ;Populate the ipcc_reg table if any AR6 images are present...
   if (isfilepresent2(OUTDIR+"ipcc_MDG_tas.timeseries.png") .or. isfilepresent2(OUTDIR+"ipcc_MDG_pr.timeseries.png")) then
@@ -470,7 +444,33 @@ begin
     ipcc_reg_txt=[/txt(ind(.not.ismissing(txt)))/]
     write_table(OUTDIR+"index.html","a",ipcc_reg_txt,"%s")
     delete([/ipcc_reg_txt,txt/])
-  end if
+  else
+     ;Populate the ipcc_reg table if any AR5 images are present...
+     if (isfilepresent2(OUTDIR+"ipcc_AMZ_tas.timeseries.png") .or. isfilepresent2(OUTDIR+"ipcc_AMZ_pr.timeseries.png")) then
+        txt = new(100,"string")
+        txt(0) = table_top_txt
+        txt(1) = "<h3 class="+quote+"display-6"+quote+">Regional Timeseries</h3>"
+        regnames=(/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn",\ ;global domains
+               "ALA","AMZ","CAM","CAS","CEU","CGI","CNA","EAF","EAS","ENA",\ ;SREX regions
+               "MED","NAS","NAU","NEB","NEU","SAF","SAH","SAS_lnd","SAS_ocn","SAU",\
+               "SEA_lnd","SEA_ocn","SSA","TIB","WAF","WAS","WNA","WSA",\
+               "ANT_lnd","ARC_lnd","ANT_ocn","ARC_ocn","CAR","NTP","STP","ETP","WIO",\ ;and the new AR5 regions
+               "NH_highlats_all","NH_highlats_lnd","NH_highlats_ocn","NH_midlats_all","NH_midlats_lnd",\
+               "NH_midlats_ocn","NH_tropics_all","NH_tropics_lnd","NH_tropics_ocn","SH_tropics_all",\
+               "SH_tropics_lnd","SH_tropics_ocn","SH_midlats_all","SH_midlats_lnd","SH_midlats_ocn",\
+               "SH_highlats_all","SH_highlats_lnd","SH_highlats_ocn"/) ; and the latitude bands
+        do reg_i=0,dimsizes(regnames)-1
+           txt(2+reg_i) = "<tr><td> "+regnames(reg_i)+" </td>"+\
+              "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_tas.timeseries.png",regnames(reg_i)+" temp.")+"</td>"+\
+              "<td>"+table_link_setup(OUTDIR,"ipcc_"+regnames(reg_i)+"_pr.timeseries.png",regnames(reg_i)+" precip.")+"</td></tr>"
+        end do
+        txt(98)=table_bottom_txt
+        txt(99)=""
+        ipcc_reg_txt=[/txt(ind(.not.ismissing(txt)))/]
+        write_table(OUTDIR+"index.html","a",ipcc_reg_txt,"%s")
+        delete([/ipcc_reg_txt,txt/])
+     end if
+   end if
 
   ;add the table bottom and tidy up...
   write_table(OUTDIR+"index.html","a",[/"<br>","</body></html>"/],"%s")
