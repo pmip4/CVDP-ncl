@@ -409,9 +409,9 @@ begin
                "E. North-America", "N. Central-America", "S. Central-America", "Caribbean (land only)", "Caribbean (ocean only)", "N.W. South-America",\
                "N. South-America", "N.E. South-America", "South-American-Monsoon", "S.W. South-America", "S.E. South-America",\
                "S. South-America", "N. Europe", "West & Central-Europe", "E. Europe", "Mediterranean (land only)", "Mediterranean (ocean only)", "Sahara", "Western Africa",\
-               "Central Africa", "N. Eastern Africa", "S. Eastern-Africa", "W. Southern Africa", "E. Southern Africa",\
+               "Central Africa", "N. Eastern Africa", "S. Eastern Africa", "W. Southern Africa", "E. Southern Africa",\
                "Madagascar", "Russian Arctic", "W. Siberia", "E. Siberia", "Russian Far-East",\
-               "W. Central Asia", "E. Central Asia", "Tibetan Plateau", "E. Asia", "Arabian Peninsula","S. Asia","S.E. Asia",\
+               "W. Central Asia", "E. Central Asia", "Tibetan Plateau", "E. Asia", "Arabian Peninsula","S. Asia","S.E. Asia (land only)","S.E. Asia (ocean only)",\
                "N. Australia", "C. Australia", "E. Australia", "S. Australia","New Zealand", "E. Antarctica", "W. Antarctica",\
                "Arctic Ocean", "N. Pacific", "Equatorial Pacific", "S. Pacific", "N. Atlantic",\
                "Equat. Atlantic", "S. Atlantic", "Arabian Sea", "Bay of Bengal",\
