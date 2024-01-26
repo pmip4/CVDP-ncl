@@ -6,9 +6,13 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/shea_util.ncl"
 load "$CVDP_SCRIPTS/functions.ncl"
-load "$CVDP_SCRIPTS/extract_all_AR5_regions.ncl"
+load "$CVDP_SCRIPTS/extract_all_AR5_regions.ncl" ; currently calling both versions...
+load "$CVDP_SCRIPTS/extract_all_AR6_regions.ncl"
 
 begin
+  ; Define a flag to determine whether to use regions from AR5 or AR6
+  AR6_REGIONS=True ;True uses the regions defined by Iturbide et al (2020)
+
   print("Starting: tas.indices.ncl")
   OUTDIR      = getenv("OUTDIR") 
   SCALE_TIMESERIES = getenv("SCALE_TIMESERIES")  
@@ -104,10 +108,18 @@ begin
       end if      ;We'll compute the absolute area average, rather than the anomaly
       ; (I feel that is correct for temperatature)
       
-      ;Use the special extract_all_AR5_regions function to compute all the area averages
-      all_region_avgs=extract_all_AR5_regions(tas,False)
-      all_region_climos=extract_all_AR5_regions(climo,False) 
-      region_names=str_split(all_region_avgs@region_names,",")
+      if AR6_REGIONS then
+        ;Use the special extract_all_AR5_regions function to compute all the area averages
+        all_region_avgs=extract_all_AR6_regions(tas,False)
+        all_region_climos=extract_all_AR6_regions(climo,False) 
+        region_names=all_region_avgs@abbrevs
+        long_names=all_region_avgs@region_names
+      else
+        ;Use the special extract_all_AR5_regions function to compute all the area averages
+        all_region_avgs=extract_all_AR5_regions(tas,False)
+        all_region_climos=extract_all_AR5_regions(climo,False) 
+        region_names=str_split(all_region_avgs@region_names,",")
+      end if
 
       ;Having made all the timeseries, it's time to write them to the output file
       do reg_i=0,dimsizes(region_names)-1
@@ -126,10 +138,18 @@ begin
         if isvar("tas_ind") then
           vname="ipcc_"+region_names(reg_i)+"_tas"
           delete(tas_ind@region_names)
-          tas_ind@region_name=region_names(reg_i)
-          longname=region_names(reg_i)+" area_avgd temperature"
+          delete(tas_ind@abbrevs)
+          if AR6_REGIONS then  
+            tas_ind@region_abbrev=region_names(reg_i)
+            tas_ind@region_name=long_names(reg_i)
+            longname=long_names(reg_i)+" area_avgd temperature"
+            tas_ind@comment = "Area average for "+long_names(reg_i)
+            else
+            tas_ind@region_name=region_names(reg_i)
+            longname=region_names(reg_i)+" area_avgd temperature"
+            tas_ind@comment = "Area average for "+region_names(reg_i)+" (extr. with 1x1o mask)"
+          end if
           tas_ind@AnnCycle=(/all_region_climos(reg_i,:)/)
-          tas_ind@comment = "Area average for "+region_names(reg_i)+" (extr. with 1x1o mask)"
           z->$vname$ = set_varAtts(tas_ind,longname,"","") 
           delete([/tas_ind,vname,longname/])
         end if

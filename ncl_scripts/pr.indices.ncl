@@ -6,9 +6,13 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/shea_util.ncl"
 load "$CVDP_SCRIPTS/functions.ncl"
-load "$CVDP_SCRIPTS/extract_all_AR5_regions.ncl"
+load "$CVDP_SCRIPTS/extract_all_AR5_regions.ncl" ; currently calling both versions...
+load "$CVDP_SCRIPTS/extract_all_AR6_regions.ncl"
 
 begin
+  ; Define a flag to determine whether to use regions from AR5 or AR6
+  AR6_REGIONS=True ;True uses the regions defined by Iturbide et al (2020)
+
   print("Starting: pr.indices.ncl")
   OUTDIR      = getenv("OUTDIR") 
   SCALE_TIMESERIES = getenv("SCALE_TIMESERIES")  
@@ -116,10 +120,18 @@ begin
          delete(temp_arr)
       end if
 
-      ;Use the special extract_all_AR5_regions function to compute all the area averages
-      all_region_avgs=extract_all_AR5_regions(pr,False)
-      all_region_climos=extract_all_AR5_regions(climo,False) 
-      region_names=str_split(all_region_avgs@region_names,",")
+      if AR6_REGIONS then
+        ;Use the special extract_all_AR5_regions function to compute all the area averages
+        all_region_avgs=extract_all_AR6_regions(pr,False)
+        all_region_climos=extract_all_AR6_regions(climo,False) 
+        region_names=all_region_avgs@abbrevs
+        long_names=all_region_avgs@region_names
+      else
+        ;Use the special extract_all_AR5_regions function to compute all the area averages
+        all_region_avgs=extract_all_AR5_regions(pr,False)
+        all_region_climos=extract_all_AR5_regions(climo,False) 
+        region_names=str_split(all_region_avgs@region_names,",")
+      end if
 
       ;Having made all the timeseries, it is time to write them to the output file
       do reg_i=0,dimsizes(region_names)-1
@@ -137,11 +149,18 @@ begin
         end if
         if isvar("pr_ind") then
           vname="ipcc_"+region_names(reg_i)+"_pr"
-          longname=region_names(reg_i)+" area_avgd precip"
           delete(pr_ind@region_names)
-          pr_ind@region_name=region_names(reg_i)
+          delete(pr_ind@abbrevs)
+          if AR6_REGIONS then  
+            pr_ind@region_abbrev=region_names(reg_i)
+            pr_ind@region_name=long_names(reg_i)
+            longname=long_names(reg_i)+" area_avgd precip."
+            pr_ind@comment = "Area average for "+long_names(reg_i)
+          else
+            pr_ind@region_name=region_names(reg_i)
+            pr_ind@comment = "Area average for "+region_names(reg_i)+" (extr. with 1x1o mask)"
+          end if
           pr_ind@AnnCycle=(/all_region_climos(reg_i,:)/)
-          pr_ind@comment = "Area average for "+region_names(reg_i)+" (extr. with 1x1o mask)"
           z->$vname$ = set_varAtts(pr_ind,longname,"","") 
           delete([/pr_ind,vname,longname/])
         end if

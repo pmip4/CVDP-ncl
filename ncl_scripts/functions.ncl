@@ -73,86 +73,93 @@ begin
   end if
 
   if (ismissing(zpath) ) then
-     print("File missing, creating blank array of data. View "+vn+" namelist for details.")
-     arr = create_empty_array(yearS,yearE,1,12,"time_lat_lon")
-     sydata = yearS     ; assign these variables based on yearS/yearE provided in namelist. Doesn't matter 
-     eydata = yearE     ; as data array is totally missing..  
-     smdata = 1
-     emdata = 12
+    print("File missing, creating blank array of data. View "+vn+" namelist for details.")
+    arr = create_empty_array(yearS,yearE,1,12,"time_lat_lon")
+    sydata = yearS     ; assign these variables based on yearS/yearE provided in namelist. Doesn't matter 
+    eydata = yearE     ; as data array is totally missing..  
+    smdata = 1
+    emdata = 12
   else
-     cpath0 = stringtochar(zpath)
-     if (any(cpath0.eq.tochar("*")).or.any(cpath0.eq.tochar("{"))) then   ; check for "*" and "{" denoting multiple files
-        tfiles = systemfunc("ls "+zpath+" 2> /dev/null")   ; /dev/null suppresses all standard error output
-        if (vn.eq."PRECT") then   ; special section for precip, as might need to do PRECC+PRECL
-           b = addfile(tfiles(0),"r")   ; check for PRECC
-           if (isfilevar(b,"PRECC").or.isfilevar(b,"PRECL")) then  ; PRECC/PRECL section
-              fils_precc = str_match(tfiles,"PRECC") 
-              fils_precl = str_match(tfiles,"PRECL") 
-              if (any(ismissing(fils_precc)).or.any(ismissing(fils_precl))) then
-                 print("Fatal: Need both PRECC and PRECL file(s), creating blank array")
-                 print(fils_precc)
-                 print(fils_precl)
-                 arr = create_empty_array(yearS,yearE,1,12,"time_lat_lon")
-                 sydata = yearS     ; assign these variables based on yearS/yearE provided in namelist. Doesn't matter 
-                 eydata = yearE     ; as data array is totally missing..  
-                 smdata = 1
-                 emdata = 12
-                 break
-              end if
-              c = addfiles(fils_precc,"r")
-              arr = c[:]->PRECC
-              c2  = addfiles(fils_precl,"r")
-              arr = (/ arr+c2[:]->PRECL  /)
-              arr@long_name = "Large-scale (stable) + convective precipitation rate (liq + ice)"
-              delete([/c2,fils_precc,fils_precl/])            
-           else    ; pr, ppt, PPT, PRECT multiple/single file read-in here..
-              c = addfiles(tfiles,"r")
-              do ii=0,dimsizes(vname)-1
-                 if (isfilevar(c[0],vname(ii))) then
-                    arr = c[:]->$vname(ii)$
-                    break
-                 end if
-              end do
+    cpath0 = stringtochar(zpath)
+    if (any(cpath0.eq.tochar("*")).or.any(cpath0.eq.tochar("{"))) then   ; check for "*" and "{" denoting multiple files
+      tfiles = systemfunc("ls "+zpath+" 2> /dev/null")   ; /dev/null suppresses all standard error output
+      if any(ismissing(tfiles)) then
+        print("File missing in "+zpath+" -- creating blank array of data")
+        arr = create_empty_array(yearS,yearE,1,12,"time_lat_lon")
+        sydata = yearS     ; assign these variables based on yearS/yearE provided in namelist. Doesn't matter 
+        eydata = yearE     ; as data array is totally missing..  
+        smdata = 1
+        emdata = 12
+      else
+       if (vn.eq."PRECT") then   ; special section for precip, as might need to do PRECC+PRECL
+         b = addfile(tfiles(0),"r")   ; check for PRECC
+         if (isfilevar(b,"PRECC").or.isfilevar(b,"PRECL")) then  ; PRECC/PRECL section
+           fils_precc = str_match(tfiles,"PRECC") 
+           fils_precl = str_match(tfiles,"PRECL") 
+           if (any(ismissing(fils_precc)).or.any(ismissing(fils_precl))) then
+             print("Fatal: Need both PRECC and PRECL file(s), creating blank array")
+             print(fils_precc)
+             print(fils_precl)
+             arr = create_empty_array(yearS,yearE,1,12,"time_lat_lon")
+             sydata = yearS     ; assign these variables based on yearS/yearE provided in namelist. Doesn't matter 
+             eydata = yearE     ; as data array is totally missing..  
+             smdata = 1
+             emdata = 12
+             break
            end if
-           delete(b)
-        else
+           c = addfiles(fils_precc,"r")
+           arr = c[:]->PRECC
+           c2  = addfiles(fils_precl,"r")
+           arr = (/ arr+c2[:]->PRECL  /)
+           arr@long_name = "Large-scale (stable) + convective precipitation rate (liq + ice)"
+           delete([/c2,fils_precc,fils_precl/])            
+         else    ; pr, ppt, PPT, PRECT multiple/single file read-in here..
            c = addfiles(tfiles,"r")
            do ii=0,dimsizes(vname)-1
-              if (isfilevar(c[0],vname(ii))) then
-                 arr = c[:]->$vname(ii)$
-                 break
-              end if
+             if (isfilevar(c[0],vname(ii))) then
+                arr = c[:]->$vname(ii)$
+                break
+             end if
            end do
-        end if     
-        nfil = dimsizes(tfiles)
-        cpathS = stringtochar(tfiles(0))      ; this section will work for PRECC/PRECL, as it will read the first
-        cpathE = stringtochar(tfiles(nfil-1)) ; PRECC file and the last PRECL file.  
-        ncharS = dimsizes(cpathS)
-        ncharE = dimsizes(cpathE)
-        sydata = stringtointeger(charactertostring(cpathS(ncharS-17:ncharS-14)))
-        smdata = stringtointeger(charactertostring(cpathS(ncharS-13:ncharS-12)))
-        eydata = stringtointeger(charactertostring(cpathE(ncharE-10:ncharE-7)))
-        emdata = stringtointeger(charactertostring(cpathE(ncharE-6:ncharE-5)))      
-        delete([/cpathS,cpathE,ncharS,ncharE,nfil/])
-;        delete(c)
-     else
-        c = addfile(zpath,"r")
-        do i=0,dimsizes(vname)-1
-           if (isfilevar(c,vname(i))) then
-              arr = c->$vname(i)$
+         end if
+         delete(b)
+       else
+         c = addfiles(tfiles,"r")
+         do ii=0,dimsizes(vname)-1
+            if (isfilevar(c[0],vname(ii))) then
+              arr = c[:]->$vname(ii)$
               break
-           end if
-        end do
-        cpath = stringtochar(zpath)     
-        nchar = dimsizes(cpath)
-        sydata = stringtointeger(charactertostring(cpath(nchar-17:nchar-14)))
-        smdata = stringtointeger(charactertostring(cpath(nchar-13:nchar-12)))
-        eydata = stringtointeger(charactertostring(cpath(nchar-10:nchar-7)))
-        emdata = stringtointeger(charactertostring(cpath(nchar-6:nchar-5))) 
-        delete([/cpath,nchar/])
-;        delete(c)     
+            end if
+         end do
+       end if     
+       nfil = dimsizes(tfiles)
+       cpathS = stringtochar(tfiles(0))      ; this section will work for PRECC/PRECL, as it will read the first
+       cpathE = stringtochar(tfiles(nfil-1)) ; PRECC file and the last PRECL file.  
+       ncharS = dimsizes(cpathS)
+       ncharE = dimsizes(cpathE)
+       sydata = stringtointeger(charactertostring(cpathS(ncharS-17:ncharS-14)))
+       smdata = stringtointeger(charactertostring(cpathS(ncharS-13:ncharS-12)))
+       eydata = stringtointeger(charactertostring(cpathE(ncharE-10:ncharE-7)))
+       emdata = stringtointeger(charactertostring(cpathE(ncharE-6:ncharE-5)))      
+       delete([/cpathS,cpathE,ncharS,ncharE,nfil/])
      end if
-     delete([/cpath0/])
+   else
+     c = addfile(zpath,"r")
+      do i=0,dimsizes(vname)-1
+        if (isfilevar(c,vname(i))) then
+          arr = c->$vname(i)$
+          break
+        end if
+      end do
+      cpath = stringtochar(zpath)     
+      nchar = dimsizes(cpath)
+      sydata = stringtointeger(charactertostring(cpath(nchar-17:nchar-14)))
+      smdata = stringtointeger(charactertostring(cpath(nchar-13:nchar-12)))
+      eydata = stringtointeger(charactertostring(cpath(nchar-10:nchar-7)))
+      emdata = stringtointeger(charactertostring(cpath(nchar-6:nchar-5))) 
+      delete([/cpath,nchar/])
+    end if
+    delete([/cpath0/])
   end if
   
   if (isvar("arr").eq.False) then
