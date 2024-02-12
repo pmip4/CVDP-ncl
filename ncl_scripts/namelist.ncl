@@ -141,7 +141,7 @@ begin
 
   if (case_sens.eq."CMIP_ONLY") then
     tstring0 = "ts_Amon_,tos_Omon_"
-    tstring1 = "ts_Amon,tsAmon"
+    tstring1 = "ts_Amon,tos_Omon"
   else
     if (case_sens.eq."True") then
       tstring0 = "TS_,TS.,ts_,.ts.,t_surf_,t_surf.,sst.,sst_"
@@ -256,7 +256,7 @@ begin
         namelist_trefht(gg+maxnumobs) =  names(gg)+" | "+fsst(0)+" | "+syear(gg)+" | "+eyear(gg)   ; grab first file
      else
         tpath = str_sub_str(paths(gg),"/*/","/{"+tstring1+"}/")
-        namelist_trefht(gg+maxnumobs) =  names(gg)+" | "+tpath+tstring0+"*.nc | "+syear(gg)+" | "+eyear(gg)
+        namelist_trefht(gg+maxnumobs) =  names(gg)+" | "+tpath+{tstring0}+"*.nc | "+syear(gg)+" | "+eyear(gg)
         delete(tpath)
      end if
      delete(fsst)
