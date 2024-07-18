@@ -240,13 +240,12 @@ begin
         region_mask=landsea_mask(AR6_masks,pr&lat,pr&lon)
 
         do reg_i=0,dimsizes(domain_names)-1
-          this_rain=mask(monsoonrain,region_mask.eq.domain_numbers(reg_i),True)
-          this_area=mask(monsoonarea,region_mask.eq.domain_numbers(reg_i),True)
-          this_coswgt=mask(coswgt,region_mask.eq.domain_numbers(reg_i),True)
+          this_rain=mask(monsoonrain,conform(monsoonrain,region_mask,(/1,2/)).eq.domain_numbers(reg_i),True)
+          this_area=mask(monsoonarea,conform(monsoonarea,region_mask,(/1,2/)).eq.domain_numbers(reg_i),True)
           monsoon_area_ts=dim_sum_n_Wrap(this_area,(/1,2/))
           monsoon_area_ts!0 = "TIME"
           monsoon_area_ts&TIME = TIME
-          monsoon_rain_ts=wgt_areaave_Wrap(this_rain,this_coswgt,1.0,0)
+          monsoon_rain_ts=wgt_areaave_Wrap(this_rain,coswgt,1.0,0)
           monsoon_rain_ts!0 = "TIME"
           monsoon_rain_ts&TIME = TIME
           ;write out individaul monsoon timeseries and tidy up
@@ -254,7 +253,7 @@ begin
           z->$varname$ = set_varAtts(monsoon_rain_ts,"rainfall over "+domain_names(reg_i)+" domain","mm/day","averaged over summer for each water year (i.e. Nov-Oct, labelled for end date). After IPCC WG1 AR6 Annex V, but with annually varying domain.")
           varname="monsoon_area_"+domain_names(reg_i)
           z->$varname$=set_varAtts(monsoon_area_ts,"Area of "+domain_names(reg_i)+" monsoon domain","km2","Calculated after IPCC WG1 AR6 Annex V, but for each water year (i.e. Nov-Oct, labelled for end date)")
-          delete([/this_coswgt,this_rain,this_area,monsoon_area_ts,monsoon_rain_ts,varname/])
+          delete([/this_rain,this_area,monsoon_area_ts,monsoon_rain_ts,varname/])
         end do; loop over the regions
       else
         ;then loop over the actual monsoon domains. Taking area and averaged rain rate
