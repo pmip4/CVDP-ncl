@@ -72,7 +72,7 @@ begin
   rad=(pi/180.)
 
   if AR6_DEFS then
-
+    domain_names=(/"NAmerM","EqAmer","SAmerM","WAfriM","SAfri","SAsiaM","EAsiaM","AusMCM"/)
   else
     ;Set up the variables to define the separate monsoons.
     ;Not as easy as you'd think as NAF crosses Greenwich and EAS is cut out of SAS.
