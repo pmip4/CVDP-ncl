@@ -13,7 +13,11 @@ begin
   ; Define a flag to determine whether to use regions from AR5 or AR6
   AR6_REGIONS=True ;True uses the regions defined by Iturbide et al (2020)
 
-  print("Starting: tas.indices.ncl")
+  if AR6_REGIONS then
+    print("Starting: tas.indices.ncl [Using AR6 regions]")
+  else
+    print("Starting: tas.indices.ncl [Using AR5 regions]")
+  end if
   OUTDIR      = getenv("OUTDIR") 
   SCALE_TIMESERIES = getenv("SCALE_TIMESERIES")  
   OUTPUT_DATA      = getenv("OUTPUT_DATA")  
