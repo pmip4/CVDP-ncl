@@ -255,6 +255,7 @@ begin
           z->$varname$=set_varAtts(monsoon_area_ts,"Area of "+domain_names(reg_i)+" monsoon domain","km2","Calculated after IPCC WG1 AR6 Annex V, but for each water year (i.e. Nov-Oct, labelled for end date)")
           delete([/this_rain,this_area,monsoon_area_ts,monsoon_rain_ts,varname/])
         end do; loop over the regions
+        delete([/region_mask/])
       else
         ;then loop over the actual monsoon domains. Taking area and averaged rain rate
         do reg_i=0,dimsizes(domain_names)-1      
