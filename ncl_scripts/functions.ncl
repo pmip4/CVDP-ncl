@@ -349,7 +349,9 @@ begin
   days = (days_in_month(yyyy,mm))/2
   hms  = days
   hms = 0   ; hours, minutes, seconds all the same (=0)
-  time = cd_inv_calendar(yyyy,mm,days,hms,hms,hms,"months since "+min(yyyy)+"-01-15 00:00:00",0)
+  cal_opt=1
+  cal_opt@calendar="noleap"
+  time = cd_inv_calendar(yyyy,mm,days,hms,hms,hms,"months since "+min(yyyy)+"-01-15 00:00:00",cal_opt)
   time@long_name = "Time"
   time@standard_name = "time"
   time@actual_range = (/min(time),max(time)/)
@@ -639,7 +641,9 @@ begin
   days = (days_in_month(yyyy,mm))/2
   hms  = days
   hms = 0   ; hours, minutes, seconds all the same (=0)
-  time = cd_inv_calendar(yyyy,mm,days,hms,hms,hms,"months since "+min(yyyy)+"-01-15 00:00:00",0)
+  cal_opt=1
+  cal_opt@calendar="noleap"
+  time = cd_inv_calendar(yyyy,mm,days,hms,hms,hms,"months since "+min(yyyy)+"-01-15 00:00:00",cal_opt)
   time@long_name = "Time"
   time@standard_name = "time"
   time!0 = "time"
@@ -716,8 +720,14 @@ begin
                  arr = dim_sum_n_Wrap(arrT,1)
                  delete(arrT)
                  arr = where(arr.ge.1,1,arr) ; optional
-              else
-                 arr = c[:]->$vname(ii)$
+              else 
+                arr_tmp = c[:]->$vname(ii)$
+                if isdouble(arr_tmp) then
+                  arr=dble2flt(arr_tmp)
+                else
+                  arr=arr_tmp
+                end if
+                delete(arr_tmp)
               end if
 
               ;Start hunting for an areacello file...
@@ -1045,7 +1055,9 @@ begin
   days = (days_in_month(yyyy,mm))/2
   hms  = days
   hms = 0   ; hours, minutes, seconds all the same (=0)
-  time = cd_inv_calendar(yyyy,mm,days,hms,hms,hms,"months since "+min(yyyy)+"-01-15 00:00:00",0)
+  cal_opt=1
+  cal_opt@calendar="noleap"
+  time = cd_inv_calendar(yyyy,mm,days,hms,hms,hms,"months since "+min(yyyy)+"-01-15 00:00:00",cal_opt)
   time@long_name = "Time"
   time@standard_name = "time"
   time!0 = "time"
