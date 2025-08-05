@@ -1,32 +1,28 @@
-CESM2-LENS 1001.001 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1001.001.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1021.002 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1021.002.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1041.003 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1041.003.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1061.004 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1061.004.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1081.005 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1081.005.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1101.006 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1101.006.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1121.007 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1121.007.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1141.008 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1141.008.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1161.009 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1161.009.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-CESM2-LENS 1181.010 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1181.010.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 1-CESM2-LENS CMIP6 Forcing
-
-CESM2-LENS 1011.001 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1011.001.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1031.002 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1031.002.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1051.003 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1051.003.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1071.004 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1071.004.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1091.005 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1091.005.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1111.006 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1111.006.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1131.007 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1131.007.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1151.008 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1151.008.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1171.009 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1171.009.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-CESM2-LENS 1191.010 | /project/mojave/cesm2/LENS/{atm,ice,ocn}/month_1/*/*1191.010.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 2-CESM2-LENS SMBB Forcing
-
-CESM1-LENS 001 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.001.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 002 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.002.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 003 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.003.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 004 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.004.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 005 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.005.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 006 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.006.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 007 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.007.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 008 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.008.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 009 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.009.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
-CESM1-LENS 010 | /project/mojave/cesm1/LENS/{atm,ice,ocn}/month_1/*/b.e11.B*C5CNBDRD.f09_g16.010.{cam.h0,pop.h,cice.h}* | 1920 | 2100 | 3-CESM1-LENS
+ACCESS-ESM1-5_historical | /data/oacd/curated_ESGF_replica/ACCESS-ESM1-5/historical/ | 1850 | 2014 | 1-CMIP6
+AWI-ESM-1-1-LR_historical | /data/oacd/curated_ESGF_replica/AWI-ESM-1-1-LR/historical/ | 1850 | 2014 | 1-CMIP6
+BCC-CSM1-1_historical | /data/oacd/curated_ESGF_replica/bcc-csm1-1/historical/ | 1850 | 2012 | 1-CMIP6
+CCSM4_historical | /data/oacd/curated_ESGF_replica/CCSM4/historical/ | 1850 | 2005 | 2-CMIP5
+CESM2_historical | /data/oacd/curated_ESGF_replica/CESM2/historical/ | 1850 | 2014 | 1-CMIP6
+CESM2-FV2_historial | /data/oacd/curated_ESGF_replica/CESM2-FV2/historical/ | 1850 | 2014 | 1-CMIP6
+CNRM-CM5_historical | /data/oacd/curated_ESGF_replica/CNRM-CM5/historical/ | 1850 | 2005 | 2-CMIP5
+CNRM-CM6-1_historical | /data/oacd/curated_ESGF_replica/CNRM-CM6-1/historical/ | 1850 | 2014 | 1-CMIP6
+CSIRO-Mk3-6-0_historical | /data/oacd/curated_ESGF_replica/CSIRO-Mk3-6-0/historical/ | 1850 | 2005 | 2-CMIP5
+CSIRO-Mk3L-1-2_historical | /data/oacd/curated_ESGF_replica/CSIRO-Mk3L-1-2/historical/ | 1851 | 2000 | 2-CMIP5
+FGOALS-f3-L_historical | /data/oacd/curated_ESGF_replica/FGOALS-f3-L/historical/ | 1850 | 2014 | 1-CMIP6
+FGOALS-g2_historical | /data/oacd/curated_ESGF_replica/FGOALS-g2/historical/ | 1900 | 2014 | 1-CMIP6
+FGOALS-g3_historical | /data/oacd/curated_ESGF_replica/FGOALS-g3/historical/ | 1850 | 2014 | 1-CMIP6
+GISS-E2-1-G_historical | /data/oacd/curated_ESGF_replica/GISS-E2-1-G/historical/ | 1850 | 2014 | 1-CMIP6
+GISS-E2-R_historical | /data/oacd/curated_ESGF_replica/GISS-E2-R/historical/ | 1850 | 2005 | 2-CMIP5
+HadGEM2-CC_historical | /data/oacd/curated_ESGF_replica/HadGEM2-CC/historical/ | 1860 | 2004 | 2-CMIP5
+HadGEM2-ES_historical | /data/oacd/curated_ESGF_replica/HadGEM2-ES/historical/ | 1860 | 2004 | 2-CMIP5
+HadGEM3-GC31-LL_historical | /data/oacd/curated_ESGF_replica/HadGEM3-GC31-LL/historical/ | 1850 | 2014 | 1-CMIP6
+INM-CM4-8_historical | /data/oacd/curated_ESGF_replica/INM-CM4-8/historical/ | 1850 | 2014 | 1-CMIP6
+IPSL-CM5A-LR_historical | /data/oacd/curated_ESGF_replica/IPSL-CM5A-LR/historical/ | 1850 | 2005 | 2-CMIP5
+IPSL-CM6A-LR_historical | /data/oacd/curated_ESGF_replica/IPSL-CM6A-LR/historical/ | 1850 | 2014 | 1-CMIP6
+MIROC-ES2L_historical | /data/oacd/curated_ESGF_replica/MIROC-ES2L/historical/ | 1850 | 2014 | 1-CMIP6
+MIROC-ESM_historical | /data/oacd/curated_ESGF_replica/MIROC-ESM/historical/ | 1850 | 2005 | 2-CMIP5
+MPI-ESM-P_historical | /data/oacd/curated_ESGF_replica/MPI-ESM-P/historical/ | 1850 | 2005 | 2-CMIP5
+MRI-CGCM3_historical | /data/oacd/curated_ESGF_replica/MRI-CGCM3/historical/ | 1850 | 2005 | 2-CMIP5
+MRI-ESM2-0_historical | /data/oacd/curated_ESGF_replica/MRI-ESM2-0/historical/ | 1850 | 2014 | 1-CMIP6
+NESM3_historical | /data/oacd/curated_ESGF_replica/NESM3/historical/ | 1850 | 2014 | 1-CMIP6
+NorESM2-LM_historical | /data/oacd/curated_ESGF_replica/NorESM2-LM/historical/ | 1950 | 2014  | 1-CMIP6
