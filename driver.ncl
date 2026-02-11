@@ -7,11 +7,11 @@
                       ; 1 = Individual simulations mode. This is equivalent to running previous versions of the CVDP.
                       ; 2 = Ensemble mode. This is similar to running version 1.0 of the CVDP-LE.
 
-  outdir            = "/project/diag/Comparison1/"   ; Set location of output files   (must end in a "/")
-  webpage_title     = "Webpage title goes here"      ; Set webpage title                                                                
+  outdir            = "/data/oacd/CVDP/test_output/v6.1_trial"   ; Set location of output files   (must end in a "/")
+  webpage_title     = "CMIP historical runs"      ; Set webpage title                                                                
   remove_trend_obs  = "QuadraticTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean   (see documentation)
-  remove_trend_model= "QuadraticTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean, rmGMST_EM, rmEM  (see documentation)
-  ensemble_mean_dir = "/project/cas/CVDP-EM_ncl/"     ; directory where the ensemble means should be located when remove_trend_model = "rmGMST_EM" or "rmEM"
+  remove_trend_model= "rm_GMST_EM"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean, rmGMST_EM, rmEM  (see documentation)
+  ensemble_mean_dir = "/data/oacd/CVDP/test_output/v6.1_trial/CVDP-EM_ncl/"     ; directory where the ensemble means should be located when remove_trend_model = "rmGMST_EM" or "rmEM"
    
   namelists_only       = "False"             ; Set to True to only create the variable namelists. Useful upon running the package for the first time to 
                                              ; verify that the correct files are being selected by the package. (See files in namelist_byvar/ directory)
@@ -25,7 +25,7 @@
   modular =  "False"                                      ; True = Run only those CVDP scripts specified in modular_list. False = Run all CVDP scripts (Default)
   modular_list = "amoc,amv,ipv"     ; Example: modular_list = "amoc,amv,pr.trends_timeseries,ipv"   For a list of available scripts see complete_list at line 57. 
 
-  zp = "~asphilli/CESM-diagnostics/CVDP/Release/v6.1.0/scripts/"                            ; directory path of CVDP NCL scripts. (must end in a "/")
+  zp = "/data/oacd/CVDP/CVDP-ncl/scripts/"                            ; directory path of CVDP NCL scripts. (must end in a "/")
                                              ; Examples: "scripts/" if all code is local, or on NCAR's CGD or CISL systems: "~asphilli/CESM-diagnostics/CVDP/Release/v6.0.0/scripts/"
                                              ; Regardless of this setting the following files should be in one directory: namelist, driver.ncl, and namelist_obs. 
                                              ; If pointing to code in ~asphilli make sure the driver script version #s match between this script and the script in ~asphilli.  
