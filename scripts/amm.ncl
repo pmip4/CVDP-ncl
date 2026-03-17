@@ -2,30 +2,36 @@
 ;
 ; Variables used: ts, pr, tas
 ;
-load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
-load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
-load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
-load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/shea_util.ncl"
 load "$CVDP_SCRIPTS/functions.ncl"
 
 begin
   print("Starting: amm.ncl")
-  
-  SCALE_TIMESERIES = getenv("SCALE_TIMESERIES")  
-  OUTPUT_DATA      = getenv("OUTPUT_DATA")  
+
+  CREATE_GRAPHICS  = getenv("CREATE_GRAPHICS")
   PNG_SCALE        = tofloat(getenv("PNG_SCALE"))
+  OUTPUT_TYPE      = getenv("OUTPUT_TYPE")
+  COLORMAP         = getenv("COLORMAP")
+  OUTDIR           = getenv("OUTDIR")
+  PNG_SCALE_SUMMARY = tofloat(getenv("PNG_SCALE_SUMMARY"))
+  REMOVE_TREND_OBS = getenv("REMOVE_TREND_OBS")
+  REMOVE_TREND_MODEL = getenv("REMOVE_TREND_MODEL")
+  ENSEMBLE_MEAN_DIR = getenv("ENSEMBLE_MEAN_DIR")
+  IM_COMMAND = getenv("IM_COMMAND")
   OPT_CLIMO        = getenv("OPT_CLIMO")
   CLIMO_SYEAR      = toint(getenv("CLIMO_SYEAR"))
   CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
-  OUTPUT_TYPE      = getenv("OUTPUT_TYPE") 
-  COLORMAP         = getenv("COLORMAP")  
-  
+
+  pi=4.*atan(1.0)
+  rad=(pi/180.)
+
   nsim = numAsciiRow("namelist_byvar/namelist_ts")
   na = asciiread("namelist_byvar/namelist_ts",(/nsim/),"string")
   names = new(nsim,"string")
   paths = new(nsim,"string")
   syear = new(nsim,"integer",-999)
   eyear = new(nsim,"integer",-999)
+  names_EM = new(nsim,"string")
+  EM_num = new(nsim,"integer",-999)
   delim = "|"
 
   do gg = 0,nsim-1
@@ -33,13 +39,30 @@ begin
      paths(gg) = str_strip(str_get_field(na(gg),2,delim))
      syear(gg) = stringtointeger(str_strip(str_get_field(na(gg),3,delim)))
      eyear(gg) = stringtointeger(str_strip(str_get_field(na(gg),4,delim)))
+     temp      = str_split(str_strip(str_get_field(na(gg),5,delim)),"-")
+     temp2 = tochar(str_strip(str_get_field(na(gg),5,delim)))
+     if (tostring(temp2(0)).eq."-") then
+        EM_num(gg)    = toint(temp(0))*-1
+     else
+        EM_num(gg)    = toint(temp(0))
+     end if
+     names_EM(gg)  = str_join(temp(1:),"-")
+     delete([/temp,temp2/])
+  end do
+  modname = str_sub_str(names," ","_")
+  bc = (/"/","'","(",")"/)
+  do ff = 0,dimsizes(modname)-1
+     do gg = 0,dimsizes(bc)-1
+        modname(ff) = str_sub_str(modname(ff),bc(gg),"_")
+     end do
   end do
   nyr = eyear-syear+1
   nyr_max = max(nyr)
+  nEM = max(EM_num)
+  nEMm = min(EM_num)
+  numobs = num(EM_num.eq.0)
 
-  pi=4.*atan(1.0)
-  rad=(pi/180.)
-;---------TAS Regressions coding-------------------------------------------------
+;---------TAS variable metadata-------------------------------------------------
   nsim_tas = numAsciiRow("namelist_byvar/namelist_trefht")
   na_tas = asciiread("namelist_byvar/namelist_trefht",(/nsim_tas/),"string")
   names_tas = new(nsim_tas,"string")
@@ -53,9 +76,16 @@ begin
      syear_tas(gg) = stringtointeger(str_strip(str_get_field(na_tas(gg),3,delim)))
      eyear_tas(gg) = stringtointeger(str_strip(str_get_field(na_tas(gg),4,delim)))
   end do
+  modname_tas = str_sub_str(names_tas," ","_")
+  do ff = 0,dimsizes(modname_tas)-1
+     do gg = 0,dimsizes(bc)-1
+        modname_tas(ff) = str_sub_str(modname_tas(ff),bc(gg),"_")
+     end do
+  end do
   delete(na_tas)
-  nyr_tas = eyear_tas-syear_tas+1  
-;---------PR Regressions coding-------------------------------------------------
+  nyr_tas = eyear_tas-syear_tas+1
+
+;---------PR variable metadata--------------------------------------------------
   nsim_pr = numAsciiRow("namelist_byvar/namelist_prect")
   na_pr = asciiread("namelist_byvar/namelist_prect",(/nsim_pr/),"string")
   names_pr = new(nsim_pr,"string")
@@ -69,58 +99,37 @@ begin
      syear_pr(gg) = stringtointeger(str_strip(str_get_field(na_pr(gg),3,delim)))
      eyear_pr(gg) = stringtointeger(str_strip(str_get_field(na_pr(gg),4,delim)))
   end do
+  modname_pr = str_sub_str(names_pr," ","_")
+  do ff = 0,dimsizes(modname_pr)-1
+     do gg = 0,dimsizes(bc)-1
+        modname_pr(ff) = str_sub_str(modname_pr(ff),bc(gg),"_")
+     end do
+  end do
   delete(na_pr)
-  nyr_pr = eyear_pr-syear_pr+1  
-;-------------------------------------------------------------------------------------------------                
-  wks_type = OUTPUT_TYPE
-  if (wks_type.eq."png") then
-     wks_type@wkWidth = 1500*PNG_SCALE
-     wks_type@wkHeight = 1500*PNG_SCALE
-  end if
-  wks = gsn_open_wks(wks_type,getenv("OUTDIR")+"amm")
-  wks4 = gsn_open_wks(wks_type,getenv("OUTDIR")+"amm.prreg")
-  wks2 = gsn_open_wks(wks_type,getenv("OUTDIR")+"amm.powspec")
-  wks3 = gsn_open_wks(wks_type,getenv("OUTDIR")+"amm.timeseries")  
+  nyr_pr = eyear_pr-syear_pr+1
+;-------------------------------------------------------------------------------------------------
+  iopt = 0
+  val1 = .95
+  val2 = .99
+  pct = 0.1
 
-  if (COLORMAP.eq."0") then
-     gsn_define_colormap(wks,"ncl_default")   
-     gsn_define_colormap(wks2,"cb_9step")
-     gsn_define_colormap(wks3,"ncl_default")
-     gsn_define_colormap(wks4,"MPL_BrBG")  
-  end if
-  if (COLORMAP.eq."1") then
-     gsn_define_colormap(wks,"BlueDarkRed18")   
-     gsn_define_colormap(wks2,"cb_9step")
-     gsn_define_colormap(wks3,"ncl_default")
-     gsn_define_colormap(wks4,"BrownBlue12")     
-  end if
-  map = new(nsim,"graphic")  
-  map_sst = new(nsim,"graphic")
-  map_tasreg = new(nsim,"graphic")  
-  map_prreg = new(nsim,"graphic")  
-  pspec = new(nsim,"graphic")
-  xyplot = new(nsim,"graphic")
-  xyplot2 = new(nsim,"graphic")
-  if (isfilepresent2("obs_ts")) then
-     pspec_obs = new(nsim,"graphic")
-  end if
+  d = addfile("$NCARG_ROOT/lib/ncarg/data/cdf/landsea.nc","r")   ; prepare land mask
 
-  tasreg_frame = 1    ; *reg_frame = flag to create regressions .ps/.png files. Created/used instead of *reg_plot_flag
-                      ; so that if {tas,pr} regressions are not created for the last simulation listed that .ps/png files are created
-  prreg_frame  = 1
   do ee = 0,nsim-1
+     fnt = OUTDIR+modname(ee)+".cvdp_data.amm."+syear(ee)+"-"+eyear(ee)+".nc"
+     fnt2 = OUTDIR+modname(ee)+".cvdp_data."+syear(ee)+"-"+eyear(ee)+".nc"
+     f_test := read_cvdp_le_data(fnt,fnt2,"amm_pattern_mon")
+     if (.not.isatt(f_test,"is_all_missing")) then
+        continue
+     end if
+
      sst = data_read_in(paths(ee),"TS",syear(ee),eyear(ee))    ; read in data, orient lats/lons correctly, set time coordinate variable up
      if (isatt(sst,"is_all_missing")) then
         delete(sst)
         continue
      end if
      sst = where(sst.le.-1.8,-1.8,sst)    ; set all values below -1.8 to -1.8
-     d = addfile("$NCARG_ROOT/lib/ncarg/data/cdf/landsea.nc","r")   ; mask out land (this is redundant for data that is already masked)
-     basemap = d->LSMASK
-     lsm = landsea_mask(basemap,sst&lat,sst&lon)
-     sst = mask(sst,conform(sst,lsm,(/1,2/)).ge.1,False)
-     delete([/lsm,basemap/])
-     delete(d)  
+     sst = mask(sst,conform(sst,landsea_mask(d->LSMASK,sst&lat,sst&lon),(/1,2/)).ge.1,False)
 
      if (OPT_CLIMO.eq."Full") then
         climo = clmMonTLL(sst)
@@ -131,22 +140,34 @@ begin
         delete(temp_arr&time)
         temp_arr&time = cd_calendar(sst&time,-1)
         if (CLIMO_SYEAR.lt.0) then
-           climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+           climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
         else
-           climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
-        end if    
+           climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+        end if
         delete(temp_arr)
-        sst   = calcMonAnomTLL(sst,climo) 
+        sst = calcMonAnomTLL(sst,climo)
      end if
 
-     ;Detrend SSTS
-     sst = (/ dtrend_msg_n(ispan(0,nyr(ee)*12-1,1),sst,False,False,0) /) ; detrend the sst array
+     ;Detrend SSTs
+     if (ee.le.(numobs-1)) then
+        sst = remove_trend(sst,REMOVE_TREND_OBS,new(1,float))
+     else
+        if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
+           sst = remove_trend(sst,REMOVE_TREND_MODEL,new(1,float))
+        end if
+        if (REMOVE_TREND_MODEL.eq."rmGMST_EM") then
+           sst = remove_trend(sst,REMOVE_TREND_MODEL,ensemble_mean_read_in(sst,ENSEMBLE_MEAN_DIR+str_sub_str(names_EM(ee)," ","_"),EM_num(ee),"TREFHT",syear,eyear,EM_num))
+        end if
+        if (REMOVE_TREND_MODEL.eq."rmEM") then
+           sst = remove_trend(sst,REMOVE_TREND_MODEL,ensemble_mean_read_in(sst,ENSEMBLE_MEAN_DIR+str_sub_str(names_EM(ee)," ","_"),EM_num(ee),"TS",syear,eyear,EM_num))
+        end if
+     end if
 
      coswgt=cos(rad*sst&lat)
-     coswgt!0 = "lat" 
-     coswgt&lat= sst&lat        
-     ssttemp = lonFlip(sst)   
-     climo = lonFlip(climo)   
+     coswgt!0 = "lat"
+     coswgt&lat= sst&lat
+     ssttemp = lonFlip(sst)
+     climo = lonFlip(climo)
      amm_n = wgt_areaave_Wrap(ssttemp(:,{5.:15.},{-50.:-20.}),coswgt({5.:15.}),1.0,0)      ;  Atlantic Meridional Mode
      amm_s = wgt_areaave(ssttemp(:,{-15.:-5.},{-20.:10.}),coswgt({-15.:-5.}),1.0,0)
      amm_ts = amm_n
@@ -156,7 +177,7 @@ begin
      delete(climo)
      amm_ts@comment_cvdp = "area average domain (-5:20N, 80W:0E) - (-10:5N, 60W:15E)"
      amm_ts@units = sst@units
-     amm_ts@long_name = "Atlantic Meridional Mode Index (monthly)"   
+     amm_ts@long_name = "Atlantic Meridional Mode Index (monthly)"
 
      amm = sst(0,:,:)
      amm = amm@_FillValue
@@ -164,233 +185,215 @@ begin
      amm@syear = syear(ee)
      amm@eyear = eyear(ee)
      delete([/sst,coswgt/])
-;---------TAS Regressions coding-------------------------------------------------
-     if (any(ismissing((/syear(ee),syear_tas(ee),eyear(ee),eyear_tas(ee)/)))) then
-        tasreg_plot_flag = 1
-     else
-        if (syear(ee).eq.syear_tas(ee)) then     ; check that the start and end years match for ts, tas, and psl
-           if (eyear(ee).eq.eyear_tas(ee)) then
-              tasreg_plot_flag = 0
-           else
-              tasreg_plot_flag = 1
-           end if
-        else
-           tasreg_plot_flag = 1
-        end if
-     end if 
 
-     if (tasreg_plot_flag.eq.0) then 
+;---------TAS Regressions coding-------------------------------------------------
+     plot_flag := check_years_match(syear(ee),syear_tas(ee),eyear(ee),eyear_tas(ee))
+     if (plot_flag.eq.0) then
         tas = data_read_in(paths_tas(ee),"TREFHT",syear_tas(ee),eyear_tas(ee))
-        if (isatt(tas,"is_all_missing")) then
-           tasreg_plot_flag = 1
-           delete(tas)
-        end if
-        
-        if (tasreg_plot_flag.eq.0) then     ; only continue if both TAS/SST fields are present
-           d = addfile("$NCARG_ROOT/lib/ncarg/data/cdf/landsea.nc","r")   
-           basemap = d->LSMASK
-           lsm = landsea_mask(basemap,tas&lat,tas&lon)
-           tas = mask(tas,conform(tas,lsm,(/1,2/)).eq.0,False)
-           delete(lsm)
-           
+        if (.not.isatt(tas,"is_all_missing")) then
+           tas = mask(tas,conform(tas,landsea_mask(d->LSMASK,tas&lat,tas&lon),(/1,2/)).eq.0,False)
+
            if (OPT_CLIMO.eq."Full") then
               tas = rmMonAnnCycTLL(tas)
            else
               check_custom_climo(names_tas(ee),syear_tas(ee),eyear_tas(ee),CLIMO_SYEAR,CLIMO_EYEAR)
               temp_arr = tas
               delete(temp_arr&time)
-              temp_arr&time = cd_calendar(tas&time,1)
+              temp_arr&time = cd_calendar(tas&time,-1)
               if (CLIMO_SYEAR.lt.0) then
-                 climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+                 climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
               else
-                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
-              end if    
+                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+              end if
               delete(temp_arr)
-              tas   = calcMonAnomTLL(tas,climo) 
+              tas = calcMonAnomTLL(tas,climo)
               delete(climo)
            end if
-           tas = (/ dtrend_msg_n(ispan(0,dimsizes(tas&time)-1,1),tas,False,False,0) /)     ; sst detrended up above
+
+           if (ee.le.(numobs-1)) then
+              tas = remove_trend(tas,REMOVE_TREND_OBS,new(1,float))
+           else
+              if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
+                 tas = remove_trend(tas,REMOVE_TREND_MODEL,new(1,float))
+              end if
+              if (REMOVE_TREND_MODEL.eq."rmGMST_EM") then
+                 tas = remove_trend(tas,REMOVE_TREND_MODEL,ensemble_mean_read_in(tas,ENSEMBLE_MEAN_DIR+str_sub_str(names_EM(ee)," ","_"),EM_num(ee),"TREFHT",syear,eyear,EM_num))
+              end if
+              if (REMOVE_TREND_MODEL.eq."rmEM") then
+                 tas = remove_trend(tas,REMOVE_TREND_MODEL,ensemble_mean_read_in(tas,ENSEMBLE_MEAN_DIR+str_sub_str(names_EM(ee)," ","_"),EM_num(ee),"TREFHT",syear_tas,eyear_tas,EM_num))
+              end if
+           end if
+
            finreg_tas = tas(0,:,:)
-           finreg_tas = (/ regCoef(amm_ts,tas(lat|:,lon|:,time|:))  /) 
+           finreg_tas = (/ regCoef(amm_ts,tas(lat|:,lon|:,time|:))  /)
+           delete(tas)
+
+           fnt_tas = OUTDIR+modname_tas(ee)+".cvdp_data.amm.tas."+syear_tas(ee)+"-"+eyear_tas(ee)+".nc"
+           if (isfilepresent2(fnt_tas)) then
+              z_tas = addfile(fnt_tas,"w")
+           else
+              z_tas = addfile(fnt_tas,"c")
+           end if
+           set_global_ncfile_attributes(z_tas,names_tas(ee),syear_tas(ee),eyear_tas(ee),getenv("VERSION"))
+           z_tas->amm_tas_regression_mon = set_varAtts(finreg_tas,"tas regression onto AMM timeseries (monthly)","","")
+           delete([/finreg_tas,z_tas,fnt_tas/])
+        else
            delete(tas)
         end if
      end if
-;---------PR Regressions coding-------------------------------------------------
-     if (any(ismissing((/syear(ee),syear_pr(ee),eyear(ee),eyear_pr(ee)/)))) then
-        prreg_plot_flag = 1
-     else
-        if (syear(ee).eq.syear_pr(ee)) then     ; check that the start and end years match for pr and psl
-           if (eyear(ee).eq.eyear_pr(ee)) then
-              prreg_plot_flag = 0
-           else
-              prreg_plot_flag = 1
-           end if
-        else
-           prreg_plot_flag = 1
-        end if
-     end if 
 
-     if (prreg_plot_flag.eq.0) then 
+;---------PR Regressions coding-------------------------------------------------
+     plot_flag := check_years_match(syear(ee),syear_pr(ee),eyear(ee),eyear_pr(ee))
+     if (plot_flag.eq.0) then
         pr = data_read_in(paths_pr(ee),"PRECT",syear_pr(ee),eyear_pr(ee))
-        if (isatt(pr,"is_all_missing")) then
-           prreg_plot_flag = 1
-           delete(pr)
-        end if
-        
-        if (prreg_plot_flag.eq.0) then     ; only continue if both SST/PR fields are present
+        if (.not.isatt(pr,"is_all_missing")) then
            if (OPT_CLIMO.eq."Full") then
               pr = rmMonAnnCycTLL(pr)
            else
               check_custom_climo(names_pr(ee),syear_pr(ee),eyear_pr(ee),CLIMO_SYEAR,CLIMO_EYEAR)
               temp_arr = pr
               delete(temp_arr&time)
-              temp_arr&time = cd_calendar(pr&time,1)
+              temp_arr&time = cd_calendar(pr&time,-1)
               if (CLIMO_SYEAR.lt.0) then
-                 climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))       
+                 climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
               else
-                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))                 
-              end if    
+                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+              end if
               delete(temp_arr)
-              pr   = calcMonAnomTLL(pr,climo) 
+              pr = calcMonAnomTLL(pr,climo)
               delete(climo)
            end if
-           pr = (/ dtrend_msg_n(ispan(0,dimsizes(pr&time)-1,1),pr,False,False,0) /)     ; sst detrended up above
+
+           if (ee.le.(numobs-1)) then
+              pr = remove_trend(pr,REMOVE_TREND_OBS,new(1,float))
+           else
+              if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
+                 pr = remove_trend(pr,REMOVE_TREND_MODEL,new(1,float))
+              end if
+              if (REMOVE_TREND_MODEL.eq."rmGMST_EM") then
+                 pr = remove_trend(pr,REMOVE_TREND_MODEL,ensemble_mean_read_in(pr,ENSEMBLE_MEAN_DIR+str_sub_str(names_EM(ee)," ","_"),EM_num(ee),"TREFHT",syear,eyear,EM_num))
+              end if
+              if (REMOVE_TREND_MODEL.eq."rmEM") then
+                 pr = remove_trend(pr,REMOVE_TREND_MODEL,ensemble_mean_read_in(pr,ENSEMBLE_MEAN_DIR+str_sub_str(names_EM(ee)," ","_"),EM_num(ee),"PRECT",syear_pr,eyear_pr,EM_num))
+              end if
+           end if
+
            finreg_pr = pr(0,:,:)
-           finreg_pr = (/ regCoef(amm_ts,pr(lat|:,lon|:,time|:))  /) 
+           finreg_pr = (/ regCoef(amm_ts,pr(lat|:,lon|:,time|:))  /)
+           delete(pr)
+
+           fnt_pr = OUTDIR+modname_pr(ee)+".cvdp_data.amm.pr."+syear_pr(ee)+"-"+eyear_pr(ee)+".nc"
+           if (isfilepresent2(fnt_pr)) then
+              z_pr = addfile(fnt_pr,"w")
+           else
+              z_pr = addfile(fnt_pr,"c")
+           end if
+           set_global_ncfile_attributes(z_pr,names_pr(ee),syear_pr(ee),eyear_pr(ee),getenv("VERSION"))
+           z_pr->amm_pr_regression_mon = set_varAtts(finreg_pr,"pr regression onto AMM timeseries (monthly)","","")
+           delete([/finreg_pr,z_pr,fnt_pr/])
+        else
            delete(pr)
         end if
      end if
-;---------------------------------------------------------------------------------------------    
-     if (tasreg_frame.eq.1.and.tasreg_plot_flag.eq.0) then    ; tasreg_frame = flag to create regressions .ps/.png files 
-        tasreg_frame = 0
-     end if  
-     if (prreg_frame.eq.1.and.prreg_plot_flag.eq.0) then      ; prreg_frame = flag to create regressions .ps/.png files 
-        prreg_frame = 0
-     end if  
-;---------------------------------------------------------------------------------------------     
-     if (OUTPUT_DATA.eq."True") then
-        modname = str_sub_str(names(ee)," ","_")
-        bc = (/"/","'","(",")"/)
-        do gg = 0,dimsizes(bc)-1
-           modname = str_sub_str(modname,bc(gg),"_")
-        end do
-        fn = getenv("OUTDIR")+modname+".cvdp_data.amm."+syear(ee)+"-"+eyear(ee)+".nc"
-        if (.not.isfilepresent2(fn)) then
-           z = addfile(fn,"c")
-           z@source = "NCAR Climate Analysis Section's Climate Variability Diagnostics Package v"+getenv("VERSION")
-           z@notes = "Data from "+names(ee)+" from "+syear(ee)+"-"+eyear(ee)
-           if (OPT_CLIMO.eq."Full") then
-              z@climatology = syear(ee)+"-"+eyear(ee)+" climatology removed prior to all calculations (other than means)"
-           else
-              if (CLIMO_SYEAR.lt.0) then
-                 z@climatology = (eyear(ee)+CLIMO_SYEAR)+"-"+(eyear(ee)+CLIMO_EYEAR)+" climatology removed prior to all calculations (other than means)"
-              else
-                 z@climatology = CLIMO_SYEAR+"-"+CLIMO_EYEAR+" climatology removed prior to all calculations (other than means)"
-              end if
-           end if
-           z@Conventions = "CF-1.6"
-        else
-           z = addfile(fn,"w")
-        end if
-        z->amm_pattern_mon = set_varAtts(amm,"AMM spatial pattern (monthly)","","")
-        z->amm_timeseries_mon = set_varAtts(amm_ts,amm_ts@long_name,"","")
-        delete([/modname,fn/])
-        if (tasreg_plot_flag.eq.0) then
-           modname = str_sub_str(names_tas(ee)," ","_")
-           bc = (/"/","'","(",")"/)
-           do gg = 0,dimsizes(bc)-1
-              modname = str_sub_str(modname,bc(gg),"_")
-           end do
-           fn = getenv("OUTDIR")+modname+".cvdp_data.amm.tas."+syear_tas(ee)+"-"+eyear_tas(ee)+".nc"
-           if (.not.isfilepresent2(fn)) then
-              z_tas = addfile(fn,"c")
-              z_tas@source = "NCAR Climate Analysis Section's Climate Variability Diagnostics Package v"+getenv("VERSION")
-              z_tas@notes = "Data from "+names_tas(ee)+" from "+syear_tas(ee)+"-"+eyear_tas(ee)
-              if (OPT_CLIMO.eq."Full") then
-                 z_tas@climatology = syear_tas(ee)+"-"+eyear_tas(ee)+" climatology removed prior to all calculations (other than means)"
-              else
-                 if (CLIMO_SYEAR.lt.0) then
-                    z_tas@climatology = (eyear(ee)+CLIMO_SYEAR)+"-"+(eyear(ee)+CLIMO_EYEAR)+" climatology removed prior to all calculations (other than means)"
-                 else
-                    z_tas@climatology = CLIMO_SYEAR+"-"+CLIMO_EYEAR+" climatology removed prior to all calculations (other than means)"
-                 end if
-              end if
-              z_tas@Conventions = "CF-1.6"
-           else
-              z_tas = addfile(fn,"w")
-           end if
-           z_tas->amm_tas_regression_mon = set_varAtts(finreg_tas,"tas regression onto AMM timeseries (monthly)","","")    
-           delete([/modname,fn,z_tas/])
-        end if
-        if (prreg_plot_flag.eq.0) then
-           modname = str_sub_str(names_pr(ee)," ","_")
-           bc = (/"/","'","(",")"/)
-           do gg = 0,dimsizes(bc)-1
-              modname = str_sub_str(modname,bc(gg),"_")
-           end do
-           fn = getenv("OUTDIR")+modname+".cvdp_data.amm.pr."+syear_pr(ee)+"-"+eyear_pr(ee)+".nc"
-           if (.not.isfilepresent2(fn)) then
-              z_pr = addfile(fn,"c")
-              z_pr@source = "NCAR Climate Analysis Section's Climate Variability Diagnostics Package v"+getenv("VERSION")
-              z_pr@notes = "Data from "+names_pr(ee)+" from "+syear_pr(ee)+"-"+eyear_pr(ee)
-              if (OPT_CLIMO.eq."Full") then
-                 z_pr@climatology = syear_pr(ee)+"-"+eyear_pr(ee)+" climatology removed prior to all calculations (other than means)"
-              else
-                 if (CLIMO_SYEAR.lt.0) then
-                    z_pr@climatology = (eyear(ee)+CLIMO_SYEAR)+"-"+(eyear(ee)+CLIMO_EYEAR)+" climatology removed prior to all calculations (other than means)"
-                 else
-                    z_pr@climatology = CLIMO_SYEAR+"-"+CLIMO_EYEAR+" climatology removed prior to all calculations (other than means)"
-                 end if
-              end if
-              z_pr@Conventions = "CF-1.6"
-           else
-              z_pr = addfile(fn,"w")
-           end if
-           z_pr->amm_pr_regression_mon = set_varAtts(finreg_pr,"pr regression onto AMM timeseries (monthly)","","") 
-           delete([/modname,fn,z_pr/])
-        end if
-     end if              
-;------------------------------------------------------------------------
-     iopt = 0
-     jave = (3*nyr(ee))/100
-     val1 = .95
-     val2 = .99
-     if (jave.eq.0) then
-       jave = 1
-     end if
-     pct = 0.1    
-     spectra_mvf = False        ; missing value flag
-     spectra_mvf_obs = True     ; missing value flag
-     if (any(ismissing(amm_ts))) then      ; check for missing data
-        print("Missing data detected for "+names(ee)+", not creating AMM spectra")
-        spectra_mvf = True
-     else
-        if (isfilepresent2("obs_ts").and.ee.eq.0) then
-           spectra_mvf_obs = False   ; missing value flag 
-        end if 
-        sdof = specx_anal(amm_ts,iopt,jave,pct)   ; amm_ts is standardized
-        splt1 = specx_ci(sdof,val1,val2)
 
-        if (OUTPUT_DATA.eq."True") then
-           splt1!0 = "ncurves"
-           splt1&ncurves = ispan(0,3,1)
-           splt1&ncurves@long_name = "power spectra curves"
-           splt1&ncurves@units = "1"
-           splt1!1 = "frequency"
-           splt1&frequency = sdof@frq
-           splt1&frequency@units = "1"
-           splt1@units_info = "df refers to frequency interval; data are standardized so there are no physical units"
-           splt1@units = "1/df"
-           splt1@info = "(0,:)=spectrum,(1,:)=Markov red noise spectrum, (2,:)="+val1+"% confidence bound for Markhov, (3,:)="+val2+"% confidence bound for Markhov"
-           z->amm_spectra = set_varAtts(splt1,"AMM (monthly) power spectra, Markov spectrum and confidence curves","","") 
-        end if
-        if (isfilepresent2("obs_ts").and.ee.eq.0) then
-           sdof_obs = sdof
-        end if
-        delete([/iopt,jave,pct/])
+;---------------------------------------------------------------------------------------------
+     jave = (3*nyr(ee))/100
+     if (jave.eq.0) then
+        jave = 1
      end if
-     if (isvar("z")) then
-        delete(z)
+
+     if (isfilepresent2(fnt)) then
+        z = addfile(fnt,"w")
+     else
+        z = addfile(fnt,"c")
+     end if
+     set_global_ncfile_attributes(z,names(ee),syear(ee),eyear(ee),getenv("VERSION"))
+     z->amm_pattern_mon = set_varAtts(amm,"AMM spatial pattern (monthly)","","")
+     z->amm_timeseries_mon = set_varAtts(amm_ts,amm_ts@long_name,"","")
+     if (.not.any(ismissing(amm_ts))) then
+        sdof = specx_anal(amm_ts,iopt,jave,pct)
+        splt1 = specx_ci(sdof,val1,val2)
+        splt1!0 = "ncurves"
+        splt1&ncurves = ispan(0,3,1)
+        splt1&ncurves@long_name = "power spectra curves"
+        splt1&ncurves@units = "1"
+        splt1!1 = "frequency"
+        splt1&frequency = sdof@frq
+        splt1&frequency@units = "1"
+        splt1@units_info = "df refers to frequency interval; data are standardized so there are no physical units"
+        splt1@units = "1/df"
+        splt1@info = "(0,:)=spectrum,(1,:)=Markov red noise spectrum, (2,:)="+val1*100+"% confidence bound for Markhov, (3,:)="+val2*100+"% confidence bound for Markhov"
+        z->amm_spectra = set_varAtts(splt1,"AMM (monthly) power spectra, Markov spectrum and confidence curves","","")
+        delete([/sdof,splt1/])
+     end if
+     delete([/z,amm,amm_ts,jave/])
+  end do
+
+  if (CREATE_GRAPHICS.eq."False") then
+     print("Finished: amm.ncl")
+     exit
+  end if
+;===========================================================================================================================================================
+  wks_type = OUTPUT_TYPE
+  if (wks_type.eq."png") then
+     wks_type@wkWidth = 1500*PNG_SCALE
+     wks_type@wkHeight = 1500*PNG_SCALE
+  end if
+  wks = gsn_open_wks(wks_type,getenv("OUTDIR")+"amm")
+  wks4 = gsn_open_wks(wks_type,getenv("OUTDIR")+"amm.prreg")
+  wks2 = gsn_open_wks(wks_type,getenv("OUTDIR")+"amm.powspec")
+  wks3 = gsn_open_wks(wks_type,getenv("OUTDIR")+"amm.timeseries")
+
+  map = new(nsim,"graphic")
+  map_sst = new(nsim,"graphic")
+  map_tasreg = new(nsim,"graphic")
+  map_prreg = new(nsim,"graphic")
+  pspec = new(nsim,"graphic")
+  xyplot = new(nsim,"graphic")
+  if (isfilepresent2("obs_ts")) then
+     pspec_obs = new(nsim,"graphic")
+  end if
+
+  tasreg_frame = 1    ; *reg_frame = flag to create regressions .ps/.png files
+  prreg_frame  = 1
+
+  do ee = 0,nsim-1
+     fnt = OUTDIR+modname(ee)+".cvdp_data.amm."+syear(ee)+"-"+eyear(ee)+".nc"
+     fnt2 = OUTDIR+modname(ee)+".cvdp_data."+syear(ee)+"-"+eyear(ee)+".nc"
+     amm := read_cvdp_le_data(fnt,fnt2,"amm_pattern_mon")
+     if (isatt(amm,"is_all_missing")) then
+        continue
+     end if
+     amm_ts := read_cvdp_le_data(fnt,fnt2,"amm_timeseries_mon")
+
+     spectra_mvf = any(ismissing(amm_ts))
+     spectra_mvf_obs = True
+     if (isfilepresent2("obs_ts").and.ee.eq.0.and..not.spectra_mvf) then
+        spectra_mvf_obs = False
+        splt1_obs := read_cvdp_le_data(fnt,fnt2,"amm_spectra")
+     end if
+
+     tasreg_plot_flag = 1
+     fnt_tas = OUTDIR+modname_tas(ee)+".cvdp_data.amm.tas."+syear_tas(ee)+"-"+eyear_tas(ee)+".nc"
+     fnt2_tas = OUTDIR+modname_tas(ee)+".cvdp_data."+syear_tas(ee)+"-"+eyear_tas(ee)+".nc"
+     finreg_tas := read_cvdp_le_data(fnt_tas,fnt2_tas,"amm_tas_regression_mon")
+     if (.not.isatt(finreg_tas,"is_all_missing")) then
+        tasreg_plot_flag = 0
+     end if
+
+     prreg_plot_flag = 1
+     fnt_pr = OUTDIR+modname_pr(ee)+".cvdp_data.amm.pr."+syear_pr(ee)+"-"+eyear_pr(ee)+".nc"
+     fnt2_pr = OUTDIR+modname_pr(ee)+".cvdp_data."+syear_pr(ee)+"-"+eyear_pr(ee)+".nc"
+     finreg_pr := read_cvdp_le_data(fnt_pr,fnt2_pr,"amm_pr_regression_mon")
+     if (.not.isatt(finreg_pr,"is_all_missing")) then
+        prreg_plot_flag = 0
+     end if
+
+     if (tasreg_frame.eq.1.and.tasreg_plot_flag.eq.0) then
+        tasreg_frame = 0
+     end if
+     if (prreg_frame.eq.1.and.prreg_plot_flag.eq.0) then
+        prreg_frame = 0
      end if
 ;========================================================================
      res = True
@@ -400,25 +403,25 @@ begin
      res@mpGridLatSpacingF =  90            ; change latitude  line spacing
      res@mpGridLonSpacingF = 180.           ; change longitude line spacing
      res@mpGridLineColor   = "transparent"  ; trick ncl into drawing perimeter
-     res@mpGridAndLimbOn   = True           ; turn on lat/lon lines  
+     res@mpGridAndLimbOn   = True           ; turn on lat/lon lines
      res@mpFillOn = False
      res@mpCenterLonF = 210.
-     res@mpOutlineOn = True  
+     res@mpOutlineOn = True
      res@gsnDraw      = False
      res@gsnFrame     = False
      res@vpYF = 0.95
      res@vpHeightF = 0.3
      res@vpXF = 0.2
      res@vpWidthF = 0.6
-  
-;     res@cnFillMode = "RasterFill"
+
      res@cnLevelSelectionMode = "ExplicitLevels"
-     
      if (COLORMAP.eq."0") then
         res@cnLevels = fspan(-.65,.65,27)
+        res@cnFillPalette = "ncl_default"
      end if
      if (COLORMAP.eq."1") then
         res@cnLevels = fspan(-.8,.8,17)
+        res@cnFillPalette = "BlueDarkRed18"
      end if
 
      res@cnLineLabelsOn = False
@@ -436,22 +439,29 @@ begin
      res@gsnCenterStringFontHeightF = 0.018
      res@gsnRightStringFontHeightF = 0.014
      res@gsnLeftString = syear(ee)+"-"+eyear(ee)
-     res@gsnCenterString = names(ee) 
-
-     res4 = res    ; res4 = pr regression resources 
-     delete(res4@cnLevels)    
-     if (COLORMAP.eq.0) then
-        res4@cnLevels = (/-5,-4,-3,-2,-1,-.75,-.5,-.25,-.1,0,.1,.25,.5,.75,1,2,3,4,5/)     
+     res@gsnCenterString = names(ee)
+     if (wks_type.eq."png") then
+        res@mpGeophysicalLineThicknessF = 2.
      else
-        res4@cnLevels = (/-3,-2,-1,-.5,-.1,0,.1,.5,1,2,3/)     
+        res@mpGeophysicalLineThicknessF = 1.
      end if
 
-     res2 = True   ; res2 = tas regression resources     
+     res4 = res    ; res4 = pr regression resources
+     delete(res4@cnLevels)
+     if (COLORMAP.eq."0") then
+        res4@cnLevels = (/-5,-4,-3,-2,-1,-.75,-.5,-.25,-.1,0,.1,.25,.5,.75,1,2,3,4,5/)
+        res4@cnFillPalette = "MPL_BrBG"
+     else
+        res4@cnLevels = (/-3,-2,-1,-.5,-.1,0,.1,.5,1,2,3/)
+        res4@cnFillPalette = "BrownBlue12"
+     end if
+
+     res2 = True   ; res2 = tas regression resources
      res2@gsnDraw      = False
      res2@gsnFrame     = False
      res2@cnLevelSelectionMode = "ExplicitLevels"
      res2@cnLevels = res@cnLevels
-
+     res2@cnFillPalette = res@cnFillPalette
      res2@cnLineLabelsOn = False
      res2@cnFillOn        = True
      res2@cnLinesOn       = False
@@ -459,63 +469,61 @@ begin
      res2@lbLabelBarOn    = False
      res2@cnInfoLabelOn = False
      res2@gsnRightString = ""
-     res2@gsnLeftString = "" 
-     res2@gsnCenterString = ""   
+     res2@gsnLeftString = ""
+     res2@gsnCenterString = ""
      res2@gsnAddCyclic = True
 
      map(ee) = gsn_csm_contour_map(wks,amm,res)
-         
+
      if (tasreg_plot_flag.eq.0) then
         if (names(ee).eq.names_tas(ee)) then
-           res@gsnCenterString = names(ee)     
+           res@gsnCenterString = names(ee)
         else
            res@gsnCenterString = names(ee)+" / "+names_tas(ee)
         end if
         map_sst(ee) = gsn_csm_contour_map(wks,amm,res)
         map_tasreg(ee) = gsn_csm_contour(wks,finreg_tas,res2)
         overlay(map_sst(ee),map_tasreg(ee))
-        delete([/finreg_tas/])
      end if
-     delete([/amm/])
+
      if (prreg_plot_flag.eq.0) then
         res4@gsnCenterString = names_pr(ee)
         map_prreg(ee) = gsn_csm_contour_map(wks4,finreg_pr,res4)
-        delete(finreg_pr)
      end if
-     
+
      pres = True
      pres@vpXF = 0.07
      pres@trYMinF = 0.
      pres@trXMinF = 0.0
      pres@trXMaxF = 0.0832
      pres@tiYAxisString = "Power"              ; yaxis
-     pres@xyLineColor   =  "black"         
+     pres@xyLineColor   =  "black"
      pres@gsnFrame      = False
      pres@gsnDraw       = False
-  
+
      pres@tmXBLabelDeltaF = -.8
      pres@tmXTLabelDeltaF = -.8
      pres@pmLegendDisplayMode    = "Never"
-     pres@xyLineThicknesses   = (/3.5,2.,1.,1./) 
+     pres@xyLineThicknesses   = (/3.5,2.,1.,1./)
      pres@xyDashPatterns      = (/0,0,0,0/)
-     pres@xyLineColors        = (/"foreground","red","blue","green"/)      
+     pres@xyLineColors        = (/"foreground","red","blue","green"/)
      pres@xyLabelMode = "custom"
-     pres@xyLineLabelFontColors = pres@xyLineColors 
+     pres@xyLineLabelFontColors = pres@xyLineColors
      pres@xyExplicitLabels = (/"","",val1*100+"%",val2*100+"%"/)
      pres@tmXTOn = True
      pres@tmYROn = False
      pres@tmXTLabelsOn = True
      pres@tmXUseBottom = False
-     pres@tmXTMode   = "Explicit"  
-     pres@tmXBMode   = "Explicit"            
+     pres@tmXTMode   = "Explicit"
+     pres@tmXBMode   = "Explicit"
      pres@tmXTValues = (/".00167",".00833",".01667",".02778",".0416",".0556",".0832"/)
-     pres@tmXTLabels = (/"50","10","5","3","2","1.5","1"/)           
+     pres@tmXTLabels = (/"50","10","5","3","2","1.5","1"/)
      pres@tmXBValues = (/".0",".01",".02",".03",".042",".056",".083"/)
      pres@tmXBLabels =     pres@tmXBValues
      pres@tmXTLabelFontHeightF = 0.018
      pres@tmXBLabelFontHeightF = 0.018
      pres@tmYLLabelFontHeightF = 0.018
-     pres@tiYAxisString = "Variance" ;"Power (~S~o~N~C~S~2~N~ / cycles mo~S~-1~N~)"              ; yaxis
+     pres@tiYAxisString = "Variance"
      pres@tiXAxisString = "Frequency (cycles mo~S~-1~N~)"
      pres@tiMainString = ""
      pres@txFontHeightF = 0.015
@@ -524,42 +532,39 @@ begin
      pres@tiYAxisFontHeightF = 0.025
      pres@tiMainFontHeightF = 0.03
      pres@gsnRightStringOrthogonalPosF = -0.115
-     
+
      pres@tiMainOn = False
      pres@gsnCenterString = "Period (years)"
      pres@gsnCenterStringFontHeightF =    pres@tiYAxisFontHeightF
      pres@gsnRightStringFontHeightF  =    pres@tiYAxisFontHeightF - 0.005
      pres@gsnRightString = syear(ee)+"-"+eyear(ee)+"  "
-     pres@gsnLeftString = "" 
+     pres@gsnLeftString = ""
      if (wks_type.eq."png") then
         pres@xyLineThicknessF   = 3.5
-        res@mpGeophysicalLineThicknessF = 2.  
      else
         pres@xyLineThicknessF   = 1.5
-        res@mpGeophysicalLineThicknessF = 1.  
      end if
      pres@gsnCenterString = names(ee)
-     if (spectra_mvf.eq.False) then
+     if (.not.spectra_mvf) then
+        splt1 := read_cvdp_le_data(fnt,fnt2,"amm_spectra")
         pres@trYMaxF = max(splt1(0,:))*1.1
-        pspec(ee) = gsn_csm_xy(wks2,sdof@frq,splt1,pres)      
-        if (isfilepresent2("obs_ts").and.ee.ge.1.and.spectra_mvf_obs.eq.False) then
+        pspec(ee) = gsn_csm_xy(wks2,splt1&frequency,splt1,pres)
+        if (isfilepresent2("obs_ts").and.ee.ge.1.and..not.spectra_mvf_obs) then
            pres@xyLineColors        = (/"gray70","black","black","black"/)
            pres@xyCurveDrawOrder = "PreDraw"
            pres@gsnCenterString = ""
            pres@gsnRightString = ""
-           pspec_obs(ee) = gsn_csm_xy(wks2,sdof_obs@frq,sdof_obs@spcx,pres)
-           overlay(pspec(ee),pspec_obs(ee)) 
+           pspec_obs(ee) = gsn_csm_xy(wks2,splt1_obs&frequency,splt1_obs(0,:),pres)
+           overlay(pspec(ee),pspec_obs(ee))
            delete(pres@xyCurveDrawOrder)
-        end if     
-        delete([/sdof,splt1/])
-     end if 
-     
+        end if
+     end if
+
      xyres = True
      xyres@gsnDraw = False
      xyres@gsnFrame = False
      xyres@gsnRightString = ""
      xyres@gsnLeftString = ""
-     xyres@gsnFrame = False
      xyres@gsnYRefLine = 0.0
      xyres@gsnYRefLineColor = "gray42"
      xyres@gsnXYBarChart = False
@@ -571,7 +576,7 @@ begin
      if (nsim.le.5) then
         xyres@tmXBLabelFontHeightF = 0.0125
         xyres@tmYLLabelFontHeightF = 0.0125
-        xyres@gsnStringFontHeightF = 0.017     
+        xyres@gsnStringFontHeightF = 0.017
      else
         xyres@tmXBLabelFontHeightF = 0.018
         xyres@tmYLLabelFontHeightF = 0.018
@@ -580,32 +585,15 @@ begin
      xyres@gsnCenterStringOrthogonalPosF = 0.025
      xyres@vpXF = 0.05
      xyres@vpHeightF = 0.15
-     if (SCALE_TIMESERIES.eq."True") then
-        xyres@vpWidthF = 0.9*((nyr(ee)*1.)/nyr_max)
-     else
-        xyres@vpWidthF = 0.9
-     end if
+     xyres@vpWidthF = 0.9
      xyres@gsnCenterString = ""
-     
+
      xyres@trXMinF = syear(ee)-.5
      xyres@trXMaxF = eyear(ee)+1.5
-     
-;     xyres2 =    xyres
-;     delete(xyres2@gsnXYBarChart)
-;     delete(xyres2@gsnAboveYRefLineColor)
-;     delete(xyres2@gsnBelowYRefLineColor)
-;     xyres2@xyLineColor = "black"
-;     if (wks_type.eq."png") then
-;        xyres2@xyLineThicknessF = 3.5
-;     else
-;        xyres2@xyLineThicknessF = 2.5
-;     end if
 
      xyres@gsnCenterString = names(ee)
-     xyplot(ee) = gsn_csm_xy(wks3,fspan(syear(ee),eyear(ee)+.91667,dimsizes(amm_ts)),amm_ts,xyres)   ; use standardized timeseries  
-;     xyplot2(ee) = gsn_csm_xy(wks3,fspan(syear(ee),eyear(ee)+.91667,dimsizes(amm_ts)),runave(amm_ts,61,0),xyres2)
-;     overlay(xyplot(ee),xyplot2(ee))
-     
+     xyplot(ee) = gsn_csm_xy(wks3,fspan(syear(ee),eyear(ee)+.91667,dimsizes(amm_ts)),amm_ts,xyres)
+
      delete([/val1,val2,amm_ts,res,pres,xyres/])
   end do
 
@@ -633,55 +621,47 @@ begin
   end if
   panres@txString = "AMM (Monthly)"
   ncol = floattointeger(sqrt(nsim))
-  nrow = (nsim/ncol)+mod(nsim,ncol)  
+  nrow = (nsim/ncol)+mod(nsim,ncol)
   gsn_panel2(wks,map,(/nrow,ncol/),panres)
 
   if (tasreg_frame.eq.0) then
-     panres@txString = "AMM SST/TAS Regressions (Monthly)" 
+     panres@txString = "AMM SST/TAS Regressions (Monthly)"
      gsn_panel2(wks,map_sst,(/nrow,ncol/),panres)
   end if
   delete(wks)
 
   if (prreg_frame.eq.0) then
-     panres@txString = "AMM PR Regressions (Monthly)" 
+     panres@txString = "AMM PR Regressions (Monthly)"
      gsn_panel2(wks4,map_prreg,(/nrow,ncol/),panres)
   end if
   delete(wks4)
 
   delete(panres@gsnPanelLabelBar)
   panres@txString = "AMM (Monthly)"
-  gsn_panel2(wks2,pspec,(/nrow,ncol/),panres)  
+  gsn_panel2(wks2,pspec,(/nrow,ncol/),panres)
   delete(wks2)
-  
-  if (SCALE_TIMESERIES.eq."True") then
-     tt = ind(nyr.eq.nyr_max)
-     panres@gsnPanelScalePlotIndex = tt(0)
-     delete(tt)
-  end if
+
   if (nsim.le.12) then
      lp = (/nsim,1/)
   else
-     lp = (/nrow,ncol/)  ;(/nsim/2+1,nsim/8+1/)  
+     lp = (/nrow,ncol/)
   end if
   panres@txString = "AMM (Monthly)"
-  gsn_panel2(wks3,xyplot,lp,panres)  
+  gsn_panel2(wks3,xyplot,lp,panres)
   delete(wks3)
   delete([/map,pspec,syear,eyear,nyr,nyr_max,lp/])
 ;--------------------------------------------------------------------------------------------------
-  OUTDIR = getenv("OUTDIR") 
-
-  if (wks_type.eq."png") then  
-     if (tasreg_frame.eq.0) then  
-        system("mv "+OUTDIR+"amm.000001.png "+OUTDIR+"amm.png") 
-        system("mv "+OUTDIR+"amm.000002.png "+OUTDIR+"amm.tasreg.png") 
+  if (wks_type.eq."png") then
+     if (tasreg_frame.eq.0) then
+        system("mv "+OUTDIR+"amm.000001.png "+OUTDIR+"amm.png")
+        system("mv "+OUTDIR+"amm.000002.png "+OUTDIR+"amm.tasreg.png")
      end if
   else
-     if (tasreg_frame.eq.0) then  
+     if (tasreg_frame.eq.0) then
         system("psplit "+OUTDIR+"amm.ps "+OUTDIR+"amm_nn")
-        system("mv "+OUTDIR+"amm_nn0001.ps "+OUTDIR+"amm.ps") 
-        system("mv "+OUTDIR+"amm_nn0002.ps "+OUTDIR+"amm.tasreg.ps") 
+        system("mv "+OUTDIR+"amm_nn0001.ps "+OUTDIR+"amm.ps")
+        system("mv "+OUTDIR+"amm_nn0002.ps "+OUTDIR+"amm.tasreg.ps")
      end if
   end if
   print("Finished: amm.ncl")
 end
-    
