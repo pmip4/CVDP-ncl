@@ -16,6 +16,9 @@ begin
   REMOVE_TREND_MODEL = getenv("REMOVE_TREND_MODEL") 
   ENSEMBLE_MEAN_DIR = getenv("ENSEMBLE_MEAN_DIR")
   IM_COMMAND = getenv("IM_COMMAND")
+  OPT_CLIMO        = getenv("OPT_CLIMO")
+  CLIMO_SYEAR      = toint(getenv("CLIMO_SYEAR"))
+  CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
 
   delim = "|"
   time_mon2 = ispan(0,11,1)
@@ -81,7 +84,24 @@ begin
            continue
         end if  
 
-        finarr = calculate_trends(rmMonAnnCycTLL(arr))   
+        if (OPT_CLIMO.eq."Full") then
+           arr_anom = rmMonAnnCycTLL(arr)
+        else
+           check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+           temp_arr = arr
+           delete(temp_arr&time)
+           temp_arr&time = cd_calendar(arr&time,-1)
+           if (CLIMO_SYEAR.lt.0) then
+              climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
+           else
+              climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+           end if
+           delete(temp_arr)
+           arr_anom = calcMonAnomTLL(arr,climo)
+           delete(climo)
+        end if
+        finarr = calculate_trends(arr_anom)
+        delete(arr_anom)
         if (hemi(dd).eq."sh") then
            finarr!1 = "j2"
            finarr!2 = "i2"
@@ -93,7 +113,20 @@ begin
         if (isatt(arr,"area")) then
            arr = (/ where(arr.ge.15,1.,0.) /)  ; ice extent calculation (all cells greater than 15% treated as 100% covered)
 
-           climo := clmMonTLL(arr)
+           if (OPT_CLIMO.eq."Full") then
+              climo := clmMonTLL(arr)
+           else
+              check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = arr
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(arr&time,-1)
+              if (CLIMO_SYEAR.lt.0) then
+                 climo := clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
+              else
+                 climo := clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+              end if
+              delete(temp_arr)
+           end if
            arr = calcMonAnomTLL(arr,climo)
            if (ee.le.(numobs-1)) then   
               arr = remove_trend(arr,REMOVE_TREND_OBS,new(1,float))

@@ -18,6 +18,9 @@ begin
   REMOVE_TREND_MODEL = getenv("REMOVE_TREND_MODEL") 
   ENSEMBLE_MEAN_DIR = getenv("ENSEMBLE_MEAN_DIR")
   IM_COMMAND = getenv("IM_COMMAND")
+  OPT_CLIMO        = getenv("OPT_CLIMO")
+  CLIMO_SYEAR      = toint(getenv("CLIMO_SYEAR"))
+  CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
 
   nsim = numAsciiRow("namelist_byvar/namelist_ts")
 
@@ -170,8 +173,23 @@ begin
      sst = mask(sst,conform(sst,landsea_mask(m->LSMASK,sst&lat,sst&lon),(/1,2/)).ge.1,False)
      delete(m)  
 
-     sst = rmMonAnnCycTLL(sst) 
-     if (ee.le.(numobs-1)) then   
+     if (OPT_CLIMO.eq."Full") then
+        sst = rmMonAnnCycTLL(sst)
+     else
+        check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+        temp_arr = sst
+        delete(temp_arr&time)
+        temp_arr&time = cd_calendar(sst&time,-1)
+        if (CLIMO_SYEAR.lt.0) then
+           climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
+        else
+           climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+        end if
+        delete(temp_arr)
+        sst = calcMonAnomTLL(sst,climo)
+        delete(climo)
+     end if
+     if (ee.le.(numobs-1)) then
         sst = remove_trend(sst,REMOVE_TREND_OBS,new(1,float))
      else
         if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -454,8 +472,23 @@ begin
         arr_zos := data_read_in_ocean(paths_zos(ee),"SSH",syear_zos(ee),eyear_zos(ee))
         if (plot_flag.eq.0.and.isatt(f_test,"is_all_missing").and..not.isatt(arr_zos,"is_all_missing")) then  ; if years of the two variables match, if the metrics haven't already been calculated, 
 
-           arr_zos = rmMonAnnCycTLL(arr_zos) 
-           if (ee.le.(numobs-1)) then   
+           if (OPT_CLIMO.eq."Full") then
+              arr_zos = rmMonAnnCycTLL(arr_zos)
+           else
+              check_custom_climo(names_zos(ee),syear_zos(ee),eyear_zos(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = arr_zos
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(arr_zos&time,-1)
+              if (CLIMO_SYEAR.lt.0) then
+                 climo = clmMonTLL(temp_arr({(eyear_zos(ee)+CLIMO_SYEAR)*100+1:(eyear_zos(ee)+CLIMO_EYEAR)*100+12},:,:))
+              else
+                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+              end if
+              delete(temp_arr)
+              arr_zos = calcMonAnomTLL(arr_zos,climo)
+              delete(climo)
+           end if
+           if (ee.le.(numobs-1)) then
               arr_zos = remove_trend(arr_zos,REMOVE_TREND_OBS,new(1,float))
            else
               if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -717,9 +750,33 @@ begin
            arr&time = fspan(tmin*1.,(tmax*1.)+(11/12.),dimsizes(yyyymm))  ; then convert time from YYYYMM->YYYY.frac
 
            if (hh.ge.1) then   ; 0 = SST, where the annual cycle has already been removed and detrending option has been applied
-              arr = rmMonAnnCycTLL(arr) 
+              if (OPT_CLIMO.eq."Full") then
+                 arr = rmMonAnnCycTLL(arr)
+              else
+                 if (hh.eq.1) then
+                    check_custom_climo(names_tas(ee),syear_tas(ee),eyear_tas(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+                 else if (hh.eq.2) then
+                    check_custom_climo(names_psl(ee),syear_psl(ee),eyear_psl(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+                 else if (hh.eq.3) then
+                    check_custom_climo(names_pr(ee),syear_pr(ee),eyear_pr(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+                 else
+                    check_custom_climo(names_zos(ee),syear_zos(ee),eyear_zos(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+                 end if
+                 end if
+                 end if
+                 ; use yyyymm/tmax (computed above before arr&time was changed to YYYY.frac)
+                 if (CLIMO_SYEAR.lt.0) then
+                    climo_indices = ind(yyyymm/100.ge.(tmax+CLIMO_SYEAR) .and. yyyymm/100.le.(tmax+CLIMO_EYEAR))
+                 else
+                    climo_indices = ind(yyyymm/100.ge.CLIMO_SYEAR .and. yyyymm/100.le.CLIMO_EYEAR)
+                 end if
+                 climo = clmMonTLL(arr(climo_indices,:,:))
+                 delete(climo_indices)
+                 arr = calcMonAnomTLL(arr,climo)
+                 delete(climo)
+              end if
 
-              if (ee.le.(numobs-1)) then   
+              if (ee.le.(numobs-1)) then
                  arr = remove_trend(arr,REMOVE_TREND_OBS,new(1,float))
               else
                  if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -813,7 +870,15 @@ begin
            end if
            if (hh.eq.1) then
               z_arr@notes = "Data from "+names_tas(ee)+" from "+syear_tas(ee)+"-"+eyear_tas(ee)
-              z_arr@climatology = syear_tas(ee)+"-"+eyear_tas(ee)+" climatology removed prior to all calculations (other than means)"
+              if (OPT_CLIMO.eq."Full") then
+                 z_arr@climatology = syear_tas(ee)+"-"+eyear_tas(ee)+" climatology removed prior to all calculations (other than means)"
+              else
+                 if (CLIMO_SYEAR.lt.0) then
+                    z_arr@climatology = (eyear_tas(ee)+CLIMO_SYEAR)+"-"+(eyear_tas(ee)+CLIMO_EYEAR)+" climatology removed prior to all calculations (other than means)"
+                 else
+                    z_arr@climatology = CLIMO_SYEAR+"-"+CLIMO_EYEAR+" climatology removed prior to all calculations (other than means)"
+                 end if
+              end if
               z_arr->$(/"nino34_spacomp_tas_jja0"/)$ = set_varAtts(n34sc_arr(6,:,:),"nino3.4 tas EN-LN spatial composite (JJA+0)","","")
               z_arr->$(/"nino34_spacomp_tas_son0"/)$ = set_varAtts(n34sc_arr(9,:,:),"nino3.4 tas EN-LN spatial composite (SON+0)","","")
               z_arr->$(/"nino34_spacomp_tas_djf1"/)$ = set_varAtts(n34sc_arr(12,:,:),"nino3.4 tas EN-LN spatial composite (DJF+1)","","")

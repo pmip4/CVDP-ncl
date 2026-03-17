@@ -17,6 +17,9 @@ begin
   REMOVE_TREND_MODEL = getenv("REMOVE_TREND_MODEL") 
   ENSEMBLE_MEAN_DIR = getenv("ENSEMBLE_MEAN_DIR")
   IM_COMMAND = getenv("IM_COMMAND")
+  OPT_CLIMO        = getenv("OPT_CLIMO")
+  CLIMO_SYEAR      = toint(getenv("CLIMO_SYEAR"))
+  CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
 
   delim = "|"
   hemi = (/"sh","nh"/)
@@ -71,8 +74,23 @@ begin
         arr = data_read_in_ice(paths(ee),"aice_"+hemi(dd),syear(ee),eyear(ee))    ; read in data, orient lats/lons correctly, set time coordinate variable up
         finarr = calculate_means(arr)
 
-        arr = rmMonAnnCycTLL(arr) 
-        if (ee.le.(numobs-1)) then   
+        if (OPT_CLIMO.eq."Full") then
+           arr = rmMonAnnCycTLL(arr)
+        else
+           check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+           temp_arr = arr
+           delete(temp_arr&time)
+           temp_arr&time = cd_calendar(arr&time,-1)
+           if (CLIMO_SYEAR.lt.0) then
+              climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
+           else
+              climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+           end if
+           delete(temp_arr)
+           arr = calcMonAnomTLL(arr,climo)
+           delete(climo)
+        end if
+        if (ee.le.(numobs-1)) then
            arr = remove_trend(arr,REMOVE_TREND_OBS,new(1,float))
         else
            if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then

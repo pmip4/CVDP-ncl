@@ -18,6 +18,9 @@ begin
   REMOVE_TREND_MODEL = getenv("REMOVE_TREND_MODEL") 
   ENSEMBLE_MEAN_DIR = getenv("ENSEMBLE_MEAN_DIR")
   IM_COMMAND = getenv("IM_COMMAND")
+  OPT_CLIMO        = getenv("OPT_CLIMO")
+  CLIMO_SYEAR      = toint(getenv("CLIMO_SYEAR"))
+  CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
 
   pi=4.*atan(1.0)
   rad=(pi/180.)
@@ -147,9 +150,24 @@ begin
 ;-----------------------------------------------------------------------------------         
      moc_ann := runave_n_Wrap(mocT,12,0,0)                             
      moc_mean_ann := dim_avg_n_Wrap(moc_ann(5::12,:,:),0)
-     mocT = rmMonAnnCycTLL(mocT) 
+     if (OPT_CLIMO.eq."Full") then
+        mocT = rmMonAnnCycTLL(mocT)
+     else
+        check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+        temp_arr = mocT
+        delete(temp_arr&time)
+        temp_arr&time = cd_calendar(mocT&time,-1)
+        if (CLIMO_SYEAR.lt.0) then
+           climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
+        else
+           climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+        end if
+        delete(temp_arr)
+        mocT = calcMonAnomTLL(mocT,climo)
+        delete(climo)
+     end if
 
-     if (ee.le.(numobs-1)) then   
+     if (ee.le.(numobs-1)) then
         mocT = remove_trend(mocT,REMOVE_TREND_OBS,new(1,float))
      else
         if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -298,9 +316,24 @@ begin
         sst = mask(sst,conform(sst,landsea_mask(d->LSMASK,sst&lat,sst&lon),(/1,2/)).ge.1,False)
         delete(d)
 
-        sst = rmMonAnnCycTLL(sst) 
+        if (OPT_CLIMO.eq."Full") then
+           sst = rmMonAnnCycTLL(sst)
+        else
+           check_custom_climo(names_ts(ee),syear_ts(ee),eyear_ts(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+           temp_arr = sst
+           delete(temp_arr&time)
+           temp_arr&time = cd_calendar(sst&time,-1)
+           if (CLIMO_SYEAR.lt.0) then
+              climo = clmMonTLL(temp_arr({(eyear_ts(ee)+CLIMO_SYEAR)*100+1:(eyear_ts(ee)+CLIMO_EYEAR)*100+12},:,:))
+           else
+              climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+           end if
+           delete(temp_arr)
+           sst = calcMonAnomTLL(sst,climo)
+           delete(climo)
+        end if
 
-        if (ee.le.(numobs-1)) then   
+        if (ee.le.(numobs-1)) then
            sst = remove_trend(sst,REMOVE_TREND_OBS,new(1,float))
         else
            if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -340,9 +373,24 @@ begin
      if (check_years_match(syear(ee),syear_tas(ee),eyear(ee),eyear_tas(ee)).eq.0) then
         tas := data_read_in(paths_tas(ee),"TREFHT",syear_tas(ee),eyear_tas(ee))     
 
-        tas = rmMonAnnCycTLL(tas) 
+        if (OPT_CLIMO.eq."Full") then
+           tas = rmMonAnnCycTLL(tas)
+        else
+           check_custom_climo(names_tas(ee),syear_tas(ee),eyear_tas(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+           temp_arr = tas
+           delete(temp_arr&time)
+           temp_arr&time = cd_calendar(tas&time,-1)
+           if (CLIMO_SYEAR.lt.0) then
+              climo = clmMonTLL(temp_arr({(eyear_tas(ee)+CLIMO_SYEAR)*100+1:(eyear_tas(ee)+CLIMO_EYEAR)*100+12},:,:))
+           else
+              climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+           end if
+           delete(temp_arr)
+           tas = calcMonAnomTLL(tas,climo)
+           delete(climo)
+        end if
 
-        if (ee.le.(numobs-1)) then   
+        if (ee.le.(numobs-1)) then
            tas = remove_trend(tas,REMOVE_TREND_OBS,new(1,float))
         else
            if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -370,9 +418,24 @@ begin
      if (check_years_match(syear(ee),syear_zos(ee),eyear(ee),eyear_zos(ee)).eq.0) then
         zos := data_read_in_ocean(paths_zos(ee),"SSH",syear_zos(ee),eyear_zos(ee))  
         if (.not.isatt(zos,"is_all_missing")) then
-           zos = rmMonAnnCycTLL(zos) 
+           if (OPT_CLIMO.eq."Full") then
+              zos = rmMonAnnCycTLL(zos)
+           else
+              check_custom_climo(names_zos(ee),syear_zos(ee),eyear_zos(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = zos
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(zos&time,-1)
+              if (CLIMO_SYEAR.lt.0) then
+                 climo = clmMonTLL(temp_arr({(eyear_zos(ee)+CLIMO_SYEAR)*100+1:(eyear_zos(ee)+CLIMO_EYEAR)*100+12},:,:))
+              else
+                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+              end if
+              delete(temp_arr)
+              zos = calcMonAnomTLL(zos,climo)
+              delete(climo)
+           end if
 
-           if (ee.le.(numobs-1)) then   
+           if (ee.le.(numobs-1)) then
               zos = remove_trend(zos,REMOVE_TREND_OBS,new(1,float))
            else
               if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then

@@ -16,6 +16,9 @@ begin
   REMOVE_TREND_MODEL = getenv("REMOVE_TREND_MODEL") 
   ENSEMBLE_MEAN_DIR = getenv("ENSEMBLE_MEAN_DIR")
   IM_COMMAND = getenv("IM_COMMAND")
+  OPT_CLIMO        = getenv("OPT_CLIMO")
+  CLIMO_SYEAR      = toint(getenv("CLIMO_SYEAR"))
+  CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
   
   nsim = numAsciiRow("namelist_byvar/namelist_trefht")
 
@@ -69,9 +72,24 @@ begin
         delete(arr)
         continue
      end if 
-     arr = rmMonAnnCycTLL(arr) 
+     if (OPT_CLIMO.eq."Full") then
+        arr = rmMonAnnCycTLL(arr)
+     else
+        check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+        temp_arr = arr
+        delete(temp_arr&time)
+        temp_arr&time = cd_calendar(arr&time,-1)
+        if (CLIMO_SYEAR.lt.0) then
+           climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
+        else
+           climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+        end if
+        delete(temp_arr)
+        arr = calcMonAnomTLL(arr,climo)
+        delete(climo)
+     end if
 
-     arr_trends = calculate_trends(arr)   
+     arr_trends = calculate_trends(arr)
 
      if (ee.le.(numobs-1)) then   
         arr = remove_trend(arr,REMOVE_TREND_OBS,new(1,float))
@@ -405,7 +423,15 @@ begin
            z = addfile(getenv("OUTDIR")+str_sub_str(names_EM_mod," ","_")+"_EM.cvdp_data.tas.trends_timeseries."+syear_mod+"-"+eyear_mod+".nc","c")
            z@source = "NCAR Climate Analysis Section's Climate Variability Diagnostics Package v"+getenv("VERSION")
            z@notes = "Data from "+names_EM_mod+" Ensemble Mean from "+syear_mod+"-"+eyear_mod
-           z@climatology = syear_mod+"-"+eyear_mod+" climatology removed prior to all calculations (other than means)"
+           if (OPT_CLIMO.eq."Full") then
+              z@climatology = syear_mod+"-"+eyear_mod+" climatology removed prior to all calculations (other than means)"
+           else
+              if (CLIMO_SYEAR.lt.0) then
+                 z@climatology = (eyear_mod+CLIMO_SYEAR)+"-"+(eyear_mod+CLIMO_EYEAR)+" climatology removed prior to all calculations (other than means)"
+              else
+                 z@climatology = CLIMO_SYEAR+"-"+CLIMO_EYEAR+" climatology removed prior to all calculations (other than means)"
+              end if
+           end if
            z@Conventions = "CF-1.6"
         end if
         z->$(/variname(dd)+"_em"/)$ = set_varAtts(arr_EM,arr_EM@long_name+" Ensemble Mean","","")

@@ -48,10 +48,18 @@
                                                                    ;  (or LON, longitude or LONGITUDE) representing the (rectilinear) destination grid.
   regrid_dir        = "/project/CVDP-regrid/"                      ; path to directory where regridded data will be placed. 
 
-;---Less frequently used options----------------------------------------------------------------------                                             
+;---Climatological period options----------------------------------------------------------------------
+  opt_climo  = "Full"           ; Full = use the full simulation period as the climatological baseline for anomaly computation.
+                                ; Custom = specify a fixed period using climo_syear and climo_eyear below.
+  climo_syear = 1981            ; Only used when opt_climo = "Custom". Start year of the climatological period.
+                                ; If negative, interpreted as an offset from the simulation end year (e.g., -30 = 30 years before end).
+  climo_eyear = 2010            ; Only used when opt_climo = "Custom". End year of the climatological period.
+                                ; If negative, interpreted as an offset from the simulation end year.
+
+;---Less frequently used options----------------------------------------------------------------------
   colormap          = 0                      ; 0 = default colormaps, 1 = colormaps better for color blindness.
-  output_type       = "png"                  ; png = create png files, ps = create ps files as well as png files (for web viewing).  
-  ncl_exec = "ncl"                           ; NCL executable command. This can be changed to a different path if needed, such as "/different/path/to/bin/ncl"                                                  
+  output_type       = "png"                  ; png = create png files, ps = create ps files as well as png files (for web viewing).
+  ncl_exec = "ncl"                           ; NCL executable command. This can be changed to a different path if needed, such as "/different/path/to/bin/ncl"
   machine_casesen = "True"                   ; True = Your filesystem is case sensitive  (Default), False = Your filesystem is case insensitive.
 
 ;========END USER MODIFICATIONS=======================================================================
@@ -107,7 +115,8 @@
          "export COLORMAP="+colormap+";   export CVDP_SCRIPTS="+zp+";   export PNG_SCALE_SUMMARY="+pngsumscale+";   "+\
          "export REMOVE_TREND_OBS="+remove_trend_obs+";   export REMOVE_TREND_MODEL="+remove_trend_model+";   "+\
          "export ENSEMBLE_MEAN_DIR="+ensemble_mean_dir+";   export MONTHLY_MODES="+compute_monthly_modes+";   "+\
-         "export MAX_TASKS="+max_num_tasks+";   export IM_COMMAND="+im+";"  
+         "export OPT_CLIMO="+opt_climo+";   export CLIMO_SYEAR="+climo_syear+";   export CLIMO_EYEAR="+climo_eyear+";   "+\
+         "export MAX_TASKS="+max_num_tasks+";   export IM_COMMAND="+im+";"
   if (regrid_check.eq."True") then
      envvar_str = envvar_str+"   export REGRID_TO_RES="+regrid_to_res+";   export REGRID_DIR="+regrid_dir+";"     
   end if

@@ -16,6 +16,9 @@ begin
   REMOVE_TREND_MODEL = getenv("REMOVE_TREND_MODEL") 
   ENSEMBLE_MEAN_DIR = getenv("ENSEMBLE_MEAN_DIR")
   IM_COMMAND = getenv("IM_COMMAND")
+  OPT_CLIMO        = getenv("OPT_CLIMO")
+  CLIMO_SYEAR      = toint(getenv("CLIMO_SYEAR"))
+  CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
 
   pi=4.*atan(1.0)
   rad=(pi/180.)
@@ -149,9 +152,24 @@ begin
      arr = where(arr.le.-1.8,-1.8,arr)    ; set all values below -1.8 to -1.8
      arr = mask(arr,conform(arr,landsea_mask(d->LSMASK,arr&lat,arr&lon),(/1,2/)).ge.1,False)
 
-     arr = rmMonAnnCycTLL(arr) 
+     if (OPT_CLIMO.eq."Full") then
+        arr = rmMonAnnCycTLL(arr)
+     else
+        check_custom_climo(names(ee),syear(ee),eyear(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+        temp_arr = arr
+        delete(temp_arr&time)
+        temp_arr&time = cd_calendar(arr&time,-1)
+        if (CLIMO_SYEAR.lt.0) then
+           climo = clmMonTLL(temp_arr({(eyear(ee)+CLIMO_SYEAR)*100+1:(eyear(ee)+CLIMO_EYEAR)*100+12},:,:))
+        else
+           climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+        end if
+        delete(temp_arr)
+        arr = calcMonAnomTLL(arr,climo)
+        delete(climo)
+     end if
 
-     if (ee.le.(numobs-1)) then   
+     if (ee.le.(numobs-1)) then
         arr = remove_trend(arr,REMOVE_TREND_OBS,new(1,float))
      else
         if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -199,9 +217,24 @@ begin
         tas := data_read_in(paths_tas(ee),"TREFHT",syear_tas(ee),eyear_tas(ee))
         tas = mask(tas,conform(tas,landsea_mask(d->LSMASK,tas&lat,tas&lon),(/1,2/)).eq.0,False)
         if (.not.isatt(tas,"is_all_missing")) then
-           tas = rmMonAnnCycTLL(tas) 
+           if (OPT_CLIMO.eq."Full") then
+              tas = rmMonAnnCycTLL(tas)
+           else
+              check_custom_climo(names_tas(ee),syear_tas(ee),eyear_tas(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = tas
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(tas&time,-1)
+              if (CLIMO_SYEAR.lt.0) then
+                 climo = clmMonTLL(temp_arr({(eyear_tas(ee)+CLIMO_SYEAR)*100+1:(eyear_tas(ee)+CLIMO_EYEAR)*100+12},:,:))
+              else
+                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+              end if
+              delete(temp_arr)
+              tas = calcMonAnomTLL(tas,climo)
+              delete(climo)
+           end if
 
-           if (ee.le.(numobs-1)) then   
+           if (ee.le.(numobs-1)) then
               tas = remove_trend(tas,REMOVE_TREND_OBS,new(1,float))
            else
               if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -234,9 +267,24 @@ begin
      if (plot_flag.eq.0) then   ; no separate check needed if amo_pr_regression_mon is already there, as needs to be done at same time as creation of amo/amo_lp
         pr := data_read_in(paths_pr(ee),"PRECT",syear_pr(ee),eyear_pr(ee))
         if (.not.isatt(pr,"is_all_missing")) then
-           pr = rmMonAnnCycTLL(pr) 
+           if (OPT_CLIMO.eq."Full") then
+              pr = rmMonAnnCycTLL(pr)
+           else
+              check_custom_climo(names_pr(ee),syear_pr(ee),eyear_pr(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = pr
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(pr&time,-1)
+              if (CLIMO_SYEAR.lt.0) then
+                 climo = clmMonTLL(temp_arr({(eyear_pr(ee)+CLIMO_SYEAR)*100+1:(eyear_pr(ee)+CLIMO_EYEAR)*100+12},:,:))
+              else
+                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+              end if
+              delete(temp_arr)
+              pr = calcMonAnomTLL(pr,climo)
+              delete(climo)
+           end if
 
-           if (ee.le.(numobs-1)) then   
+           if (ee.le.(numobs-1)) then
               pr = remove_trend(pr,REMOVE_TREND_OBS,new(1,float))
            else
               if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
@@ -268,9 +316,24 @@ begin
      if (plot_flag.eq.0) then   ; no separate check needed if pdv_zos_regression_mon is already there
         zos := data_read_in_ocean(paths_zos(ee),"SSH",syear_zos(ee),eyear_zos(ee))
         if (.not.isatt(zos,"is_all_missing")) then
-           zos = rmMonAnnCycTLL(zos) 
+           if (OPT_CLIMO.eq."Full") then
+              zos = rmMonAnnCycTLL(zos)
+           else
+              check_custom_climo(names_zos(ee),syear_zos(ee),eyear_zos(ee),CLIMO_SYEAR,CLIMO_EYEAR)
+              temp_arr = zos
+              delete(temp_arr&time)
+              temp_arr&time = cd_calendar(zos&time,-1)
+              if (CLIMO_SYEAR.lt.0) then
+                 climo = clmMonTLL(temp_arr({(eyear_zos(ee)+CLIMO_SYEAR)*100+1:(eyear_zos(ee)+CLIMO_EYEAR)*100+12},:,:))
+              else
+                 climo = clmMonTLL(temp_arr({CLIMO_SYEAR*100+1:CLIMO_EYEAR*100+12},:,:))
+              end if
+              delete(temp_arr)
+              zos = calcMonAnomTLL(zos,climo)
+              delete(climo)
+           end if
 
-           if (ee.le.(numobs-1)) then   
+           if (ee.le.(numobs-1)) then
               zos = remove_trend(zos,REMOVE_TREND_OBS,new(1,float))
            else
               if (REMOVE_TREND_MODEL.eq."30yrRunningMean".or.REMOVE_TREND_MODEL.eq."LinearTrend".or.REMOVE_TREND_MODEL.eq."QuadraticTrend".or.REMOVE_TREND_MODEL.eq."None") then
