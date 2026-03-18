@@ -439,6 +439,13 @@ begin
      end if
      delete(prect_i)
   end if 
+
+  if (case_sens.eq."True") then
+     tstring1 = "PRECT,PRECC,pr,precip,prate,prcp"   ; list in order of likelihood/preference: CESM name, CMIP name, other
+  else
+     tstring1 = "PRECT,PRECC,pr,precip,prate,prcp"
+  end if
+  sstr := str_split(tstring1,",")
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
         namelist_prect(gg+maxnumobs) =  names(gg)+" | missing | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)  ; set to missing as default
@@ -448,28 +455,14 @@ begin
               if (dimsizes(fsst).eq.1) then
                  fsst@path = str_sub_str(fsst,".PRECC.",".{PRECC,PRECL}.")
               else
-                 namelist_prect(gg+maxnumobs) =  names(gg)+" | "+fsst(0)+" | "+syear(gg)+" | "+eyear(gg)   ; grab first file         
+                 fsst@path = str_sub_str(paths(gg)+"*."+sstr(hh)+".*.nc",".PRECC.",".{PRECC,PRECL}.")
               end if
               fsst@path = str_sub_str(fsst@path,"/PRECC/","/{PRECC,PRECL}/")
            else
-               namelist_prect(gg+maxnumobs) =  names(gg)+" | "+fsst(0)+" | "+syear(gg)+" | "+eyear(gg)   ; file is missing..          
-           end if
-        else
-           if (pstring(hh).eq."PRECC.*".or.pstring(hh).eq."PRECC_*") then
-              tpath = str_sub_str(paths(gg),"/*/","/{PRECC,PRECL}/")
-              namelist_prect(gg+maxnumobs) =  names(gg)+" | "+tpath+"*{PRECC,PRECL}*.nc | "+syear(gg)+" | "+eyear(gg)
-           else
-              if any(pstring(hh).eq.(/"pr_*","pr_Amon_*","prAmon_*","pr.*","_pr_*",".pr.*","precip_*","precip.*","prcp_*","prcp.*","prate_*","prate.*"/)) then
-                 tpath = str_sub_str(paths(gg),"/*/","/pr/")
-              end if
-              if (pstring(hh).eq."PRECT.*".or.pstring(hh).eq."PRECT_*") then
-                 tpath = str_sub_str(paths(gg),"/*/","/PRECC/")
-              end if
-              if (isvar((/"tpath"/))) then
-                 namelist_prect(gg+maxnumobs) =  names(gg)+" | "+tpath+"*"+pstring(hh)+"*.nc | "+syear(gg)+" | "+eyear(gg)
-                 delete(tpath)
+              if (dimsizes(fsst).eq.1) then
+                 fsst@path = fsst
               else
-                 namelist_prect(gg+maxnumobs) =  names(gg)+" | missing"
+                 fsst@path = paths(gg)+"*."+sstr(hh)+".*.nc"
               end if
            end if
            namelist_prect(gg+maxnumobs) =  names(gg)+" | "+fsst@path+" | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)
@@ -526,10 +519,6 @@ begin
         end if
      end do
   end do  
-  delete(pstring)
-  if (isvar((/"fsst"/))) then
-     delete(fsst)
-  end if
   asciiwrite("namelist_byvar/namelist_prect",namelist_prect)    
 ;------- MOC section----------------------------  
   namelist_moc = new(nsim+maxnumobs,string)
