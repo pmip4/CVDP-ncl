@@ -2741,10 +2741,34 @@ begin
   end if
   return(emdata)
 end
+;=================================================================================================
+; Check that the user-specified climatological period is within the time range of the data
+;
+undef("check_custom_climo")
+procedure check_custom_climo(mn:string,startyear:numeric,endyear:numeric,climo_startyear:numeric,climo_endyear:numeric)
+local startyear,endyear,climo_startyear,climo_endyear,mn
+begin
+  do gg = 0,dimsizes(startyear)-1
+     if (climo_startyear.ge.0) then    ; exact years specified for climatological period
+        if (climo_startyear.ge.startyear(gg).and.climo_endyear.le.endyear(gg)) then
+        else
+           print("check_custom_climo: Warning! Beginning and/or ending of climatological period is outside time range of data.")
+           print("Dataset: "+mn+", years = "+startyear(gg)+":"+endyear(gg)+", set climatological period = "+climo_startyear+":"+climo_endyear)
+           print("The diagnostics package will proceed, but one or more dataset(s) will not have the full climatological period removed and/or the package may fail with the following message: fatal:NclOneDValGetRangeIndex: start coordinate index out of range.")
+        end if
+     else                              ; relative years specified for climatological period
+        if ((endyear(gg)-startyear(gg)+1).lt.(climo_endyear-climo_startyear+1)) then
+           print("check_custom_climo: Warning! There are fewer than "+(climo_endyear-climo_startyear+1)+" years of data.")
+           print("Dataset: "+mn+", years = "+startyear(gg)+":"+endyear(gg)+", set climatological period = "+(endyear(gg)+climo_startyear)+":"+(endyear(gg)+climo_endyear))
+           print("The diagnostics package will proceed, but one or more dataset(s) will use all available data ("+(endyear(gg)-startyear(gg)+1)+" rather than "+(climo_endyear-climo_startyear+1)+" years). The package may fail with the following message: fatal:NclOneDValGetRangeIndex: start coordinate index out of range.")
+        end if
+     end if
+  end do
+end
 ;====================================================================================================================
 ; This function identifies the ensemble mean file needed. The input iarr array is only used if the ensemble mean
 ; file is not present. The ensemble mean is returned. List of inputs:
-; sarr = data array, sopt = name of detrending option (valid entries = None, LinearTrend, 30yrRunningMean, rmGMST_EM, rmEM), 
+; sarr = data array, sopt = name of detrending option (valid entries = None, LinearTrend, 30yrRunningMean, rmGMST_EM, rmEM),
 ; sopt_em = is only used when sopt="rmGMST_EM" (this is the ensemble mean TAS array to regress out) or "rmEM".
 ;
 ; Note that if sopt is not set to LinearTrend, QuadraticTrend, 30yrRunningMean rmGMST_EM or rmEM, the sarr array is returned unaltered.
