@@ -2750,17 +2750,17 @@ local startyear,endyear,climo_startyear,climo_endyear,mn
 begin
   do gg = 0,dimsizes(startyear)-1
      if (climo_startyear.ge.0) then    ; exact years specified for climatological period
-        if (climo_startyear.ge.startyear(gg).and.climo_endyear.le.endyear(gg)) then
+        if (climo_startyear.ge.startyear.and.climo_endyear.le.endyear) then
         else
            print("check_custom_climo: Warning! Beginning and/or ending of climatological period is outside time range of data.")
-           print("Dataset: "+mn+", years = "+startyear(gg)+":"+endyear(gg)+", set climatological period = "+climo_startyear+":"+climo_endyear)
+           print("Dataset: "+mn+", years = "+startyear+":"+endyear+", set climatological period = "+climo_startyear+":"+climo_endyear)
            print("The diagnostics package will proceed, but one or more dataset(s) will not have the full climatological period removed and/or the package may fail with the following message: fatal:NclOneDValGetRangeIndex: start coordinate index out of range.")
         end if
      else                              ; relative years specified for climatological period
-        if ((endyear(gg)-startyear(gg)+1).lt.(climo_endyear-climo_startyear+1)) then
+        if ((endyear-startyear+1).lt.(climo_endyear-climo_startyear+1)) then
            print("check_custom_climo: Warning! There are fewer than "+(climo_endyear-climo_startyear+1)+" years of data.")
-           print("Dataset: "+mn+", years = "+startyear(gg)+":"+endyear(gg)+", set climatological period = "+(endyear(gg)+climo_startyear)+":"+(endyear(gg)+climo_endyear))
-           print("The diagnostics package will proceed, but one or more dataset(s) will use all available data ("+(endyear(gg)-startyear(gg)+1)+" rather than "+(climo_endyear-climo_startyear+1)+" years). The package may fail with the following message: fatal:NclOneDValGetRangeIndex: start coordinate index out of range.")
+           print("Dataset: "+mn+", years = "+startyear+":"+endyear+", set climatological period = "+(endyear+climo_startyear)+":"+(endyear+climo_endyear))
+           print("The diagnostics package will proceed, but one or more dataset(s) will use all available data ("+(endyear-startyear+1)+" rather than "+(climo_endyear-climo_startyear+1)+" years). The package may fail with the following message: fatal:NclOneDValGetRangeIndex: start coordinate index out of range.")
         end if
      end if
   end do
