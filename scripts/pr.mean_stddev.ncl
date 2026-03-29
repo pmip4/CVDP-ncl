@@ -109,20 +109,25 @@ begin
      z = addfile(fnt,"c")
      set_global_ncfile_attributes(z,names(ee),syear(ee),eyear(ee),getenv("VERSION"))
 
-     z->$(/"pr_spatialmean_djf"/)$     = set_varAtts(finarr(0,:,:),"pr climatology (DJF)","","")
-     z->$(/"pr_spatialmean_jfm"/)$     = set_varAtts(finarr(1,:,:),"pr climatology (JFM)","","")
-     z->$(/"pr_spatialmean_mam"/)$     = set_varAtts(finarr(2,:,:),"pr climatology (MAM)","","")
-     z->$(/"pr_spatialmean_jja"/)$     = set_varAtts(finarr(3,:,:),"pr climatology (JJA)","","")
-     z->$(/"pr_spatialmean_jas"/)$     = set_varAtts(finarr(4,:,:),"pr climatology (JAS)","","")
-     z->$(/"pr_spatialmean_son"/)$     = set_varAtts(finarr(5,:,:),"pr climatology (SON)","","")
-     z->$(/"pr_spatialmean_ann"/)$     = set_varAtts(finarr(6,:,:),"pr climatology (annual)","","")     
-     z->$(/"pr_spatialstddev_djf"/)$   = set_varAtts(finarrSD(0,:,:),"pr standard deviation (DJF)","","")
-     z->$(/"pr_spatialstddev_jfm"/)$   = set_varAtts(finarrSD(1,:,:),"pr standard deviation (JFM)","","")
-     z->$(/"pr_spatialstddev_mam"/)$   = set_varAtts(finarrSD(2,:,:),"pr standard deviation (MAM)","","")
-     z->$(/"pr_spatialstddev_jja"/)$   = set_varAtts(finarrSD(3,:,:),"pr standard deviation (JJA)","","")
-     z->$(/"pr_spatialstddev_jas"/)$   = set_varAtts(finarrSD(4,:,:),"pr standard deviation (JAS)","","")
-     z->$(/"pr_spatialstddev_son"/)$   = set_varAtts(finarrSD(5,:,:),"pr standard deviation (SON)","","")
-     z->$(/"pr_spatialstddev_ann"/)$   = set_varAtts(finarrSD(6,:,:),"pr standard deviation (annual)","","")
+     if (OPT_CLIMO.eq."Full") then
+       com_cvdp=""
+     else 
+       com_cvdp="Climatological period of "+CLIMO_SYEAR+"-"+CLIMO_EYEAR
+     end if 
+     z->$(/"pr_spatialmean_djf"/)$     = set_varAtts(finarr(0,:,:),"pr climatology (DJF)","",com_cvdp)
+     z->$(/"pr_spatialmean_jfm"/)$     = set_varAtts(finarr(1,:,:),"pr climatology (JFM)","",com_cvdp)
+     z->$(/"pr_spatialmean_mam"/)$     = set_varAtts(finarr(2,:,:),"pr climatology (MAM)","",com_cvdp)
+     z->$(/"pr_spatialmean_jja"/)$     = set_varAtts(finarr(3,:,:),"pr climatology (JJA)","",com_cvdp)
+     z->$(/"pr_spatialmean_jas"/)$     = set_varAtts(finarr(4,:,:),"pr climatology (JAS)","",com_cvdp)
+     z->$(/"pr_spatialmean_son"/)$     = set_varAtts(finarr(5,:,:),"pr climatology (SON)","",com_cvdp)
+     z->$(/"pr_spatialmean_ann"/)$     = set_varAtts(finarr(6,:,:),"pr climatology (annual)","",com_cvdp)     
+     z->$(/"pr_spatialstddev_djf"/)$   = set_varAtts(finarrSD(0,:,:),"pr standard deviation (DJF)","",com_cvdp)
+     z->$(/"pr_spatialstddev_jfm"/)$   = set_varAtts(finarrSD(1,:,:),"pr standard deviation (JFM)","",com_cvdp)
+     z->$(/"pr_spatialstddev_mam"/)$   = set_varAtts(finarrSD(2,:,:),"pr standard deviation (MAM)","",com_cvdp)
+     z->$(/"pr_spatialstddev_jja"/)$   = set_varAtts(finarrSD(3,:,:),"pr standard deviation (JJA)","",com_cvdp)
+     z->$(/"pr_spatialstddev_jas"/)$   = set_varAtts(finarrSD(4,:,:),"pr standard deviation (JAS)","",com_cvdp)
+     z->$(/"pr_spatialstddev_son"/)$   = set_varAtts(finarrSD(5,:,:),"pr standard deviation (SON)","",com_cvdp)
+     z->$(/"pr_spatialstddev_ann"/)$   = set_varAtts(finarrSD(6,:,:),"pr standard deviation (annual)","",com_cvdp)
      delete([/z,arr,finarr,finarrSD/])
   end do
 

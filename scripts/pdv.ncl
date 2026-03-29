@@ -212,6 +212,12 @@ begin
         end if
      end if
 
+     if (OPT_CLIMO.eq."Full") then
+        com_cvdp=""
+     else
+        com_cvdp="Climatological period of "+CLIMO_SYEAR+"-"+CLIMO_EYEAR
+     end if
+
      plot_flag := check_years_match(syear(ee),syear_tas(ee),eyear(ee),eyear_tas(ee))
      if (plot_flag.eq.0) then   ; no separate check needed if amo_tas_regression_mon is already there, as needs to be done at same time as creation of amo/amo_lp
         tas := data_read_in(paths_tas(ee),"TREFHT",syear_tas(ee),eyear_tas(ee))
@@ -256,7 +262,7 @@ begin
               z_arr = addfile(fnt_tas,"c")
            end if
            set_global_ncfile_attributes(z_arr,names_tas(ee),syear_tas(ee),eyear_tas(ee),getenv("VERSION"))
-           z_arr->$(/"pdv_tas_regression_mon"/)$ = set_varAtts(fintas,"tas regression onto PDV timeseries (monthly)","","")
+           z_arr->$(/"pdv_tas_regression_mon"/)$ = set_varAtts(fintas,"tas regression onto PDV timeseries (monthly)","",com_cvdp)
            delete([/z_arr,fintas,fnt_tas/])
         end if
         delete(tas)
@@ -306,7 +312,7 @@ begin
               z_arr = addfile(fnt_pr,"c")
            end if
            set_global_ncfile_attributes(z_arr,names_pr(ee),syear_pr(ee),eyear_pr(ee),getenv("VERSION"))
-           z_arr->$(/"pdv_pr_regression_mon"/)$ = set_varAtts(finpr,"pr regression onto PDV timeseries (monthly)","","")
+           z_arr->$(/"pdv_pr_regression_mon"/)$ = set_varAtts(finpr,"pr regression onto PDV timeseries (monthly)","",com_cvdp)
            delete([/z_arr,finpr,fnt_pr/])
         end if
         delete(pr)
@@ -366,7 +372,7 @@ begin
               delete([/LAT2D,LON2D/])
               finzos@coordinates ="lat2d_ocean lon2d_ocean"
            end if  
-           z_arr->$(/"pdv_zos_regression_mon"/)$ = set_varAtts(finzos,"zos regression onto PDV timeseries (monthly)","","")
+           z_arr->$(/"pdv_zos_regression_mon"/)$ = set_varAtts(finzos,"zos regression onto PDV timeseries (monthly)","",com_cvdp)
            delete([/z_arr,finzos,fnt_zos/])
         end if
         delete(zos)
@@ -380,12 +386,12 @@ begin
         z = addfile(fnt,"c")
      end if
      set_global_ncfile_attributes(z,names(ee),syear(ee),eyear(ee),getenv("VERSION"))
-     z->$(/"pdv_pattern_mon"/)$ = set_varAtts(finarr,"PDV regression pattern (monthly)","","")   ; flip longitudes back to running from 0:360.
-     z->$(/"pdv_timeseries_mon"/)$ = set_varAtts(pc1,"PDV timeseries (monthly)","C","")
+     z->$(/"pdv_pattern_mon"/)$ = set_varAtts(finarr,"PDV regression pattern (monthly)","",com_cvdp)   ; flip longitudes back to running from 0:360.
+     z->$(/"pdv_timeseries_mon"/)$ = set_varAtts(pc1,"PDV timeseries (monthly)","C",com_cvdp)
      if (.not.any(ismissing(pc1))) then
         splt1 := create_power_spectra(pc1,iopt,jave,pct,val1,val2,True)
         splt1@detrend_option = pc1@detrend_option
-        z->$(/"pdv_spectra"/)$ = set_varAtts(splt1,"PDV (monthly) power spectra, Markov spectrum and confidence curves","","") 
+        z->$(/"pdv_spectra"/)$ = set_varAtts(splt1,"PDV (monthly) power spectra, Markov spectrum and confidence curves","",com_cvdp)
      end if
      delete([/z,finarr,pc1/])
   end do
