@@ -215,7 +215,11 @@ begin
      if (OPT_CLIMO.eq."Full") then
         com_cvdp=""
      else
-        com_cvdp="Climatological period of "+CLIMO_SYEAR+"-"+CLIMO_EYEAR
+        if (CLIMO_SYEAR.lt.0) then
+                com_cvdp="Climatological period of "+(eyear(ee)+CLIMO_SYEAR)+"-"+(eyear(ee)+CLIMO_EYEAR)
+        else
+           com_cvdp="Climatological period of "+CLIMO_SYEAR+"-"+CLIMO_EYEAR
+        end if
      end if
 
      plot_flag := check_years_match(syear(ee),syear_tas(ee),eyear(ee),eyear_tas(ee))

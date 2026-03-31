@@ -112,7 +112,11 @@ begin
      if (OPT_CLIMO.eq."Full") then
        com_cvdp=""
      else 
-       com_cvdp="Climatological period of "+CLIMO_SYEAR+"-"+CLIMO_EYEAR
+        if (CLIMO_SYEAR.lt.0) then
+                com_cvdp="Climatological period of "+(eyear(ee)+CLIMO_SYEAR)+"-"+(eyear(ee)+CLIMO_EYEAR)
+        else
+           com_cvdp="Climatological period of "+CLIMO_SYEAR+"-"+CLIMO_EYEAR
+        end if
      end if 
      z->$(/"pr_spatialmean_djf"/)$     = set_varAtts(finarr(0,:,:),"pr climatology (DJF)","",com_cvdp)
      z->$(/"pr_spatialmean_jfm"/)$     = set_varAtts(finarr(1,:,:),"pr climatology (JFM)","",com_cvdp)
