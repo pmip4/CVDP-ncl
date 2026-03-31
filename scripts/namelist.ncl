@@ -233,10 +233,10 @@ begin
     ;print("ls "+paths(gg)+"*{"+tstring0+"}*.nc 2> /dev/null")
     fsst = systemfunc("ls "+paths(gg)+"*{"+tstring0+"}*.nc 2> /dev/null")   ; /dev/null suppresses all standard error output
      if (dimsizes(fsst).eq.1) then
-        namelist_ts(gg+maxnumobs) =  names(gg)+" | "+fsst(0)+" | "+syear(gg)+" | "+eyear(gg)   ; grab first file
+        namelist_ts(gg+maxnumobs) =  names(gg)+" | "+fsst(0)+" | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)   ; grab first file
      else
         tpath = str_sub_str(paths(gg),"/*/","/{"+tstring1+"}/")     ; explicitly specify TS,ts in directory structure to eliminate "/tsmin/" being used
-        namelist_ts(gg+maxnumobs) =  names(gg)+" | "+tpath+"*{"+tstring0+"}*.nc | "+syear(gg)+" | "+eyear(gg)
+        namelist_ts(gg+maxnumobs) =  names(gg)+" | "+tpath+"*{"+tstring0+"}*.nc | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)
         delete(tpath)
      end if
      delete(fsst)
