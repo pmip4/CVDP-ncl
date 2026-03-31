@@ -209,25 +209,16 @@ begin
      delete(ts_i)
   end if  
   
-  if (case_sens.eq."True") then
-     tstring1 = "TS,ts,t_surf,sst,tos"        ; list in order of likelihood/preference: CESM name, CMIP name, other
-  else
-     tstring1 = "TS,t_surf,sst,tos"
-  end if
-  sstr := str_split(tstring1,",")
-
   if (case_sens.eq."CMIP_ONLY") then
-    tstring0 = "ts_Amon_,tsAmon_"
     tstring1 = "ts_Amon,tsAmon"
   else
     if (case_sens.eq."True") then
-      tstring0 = "TS_,TS.,ts_,.ts.,t_surf_,t_surf.,sst.,sst_"
       tstring1 = "TS,ts,t_surf,sst"
     else
-      tstring0 = "TS_,TS.,t_surf_,t_surf.,sst.,sst_"
       tstring1 = "TS,t_surf,sst"
     end if
   end if
+  sstr := str_split(tstring1,",")
   
   do gg = 0,nsim-1
     ;print("ls "+paths(gg)+"*{"+tstring0+"}*.nc 2> /dev/null")
@@ -270,17 +261,16 @@ begin
   end if  
   
   if (case_sens.eq."CMIP_ONLY") then
-    tstring0 = "psl_Amon_,pslAmon_"
     tstring1 = "psl_Amon,pslAmon"
   else
     if (case_sens.eq."True") then
-      tstring0 = "PSL_,PSL.,psl_,psl.,slp.,slp_"
       tstring1 = "PSL,psl,SLP,slp"
     else
-      tstring0 = "PSL_,PSL.,slp.,slp_"
       tstring1 = "PSL,slp"
     end if
   end if
+  sstr := str_split(tstring1,",")
+
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
         namelist_psl(gg+maxnumobs) =  names(gg)+" | missing | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)     ; set to missing as default
@@ -356,17 +346,16 @@ begin
   end if 
   
   if (case_sens.eq."CMIP_ONLY") then
-    tstring0 = "tas_Amon_,tasAmon"
     tstring1 = "tas_Amon,tasAmon"
   else
     if (case_sens.eq."True") then
-      tstring0 = "TREFHT_,TREFHT.,tas.,tas_,t_ref.,t_ref_,T2.,T2_"
       tstring1 = "TREFHT,tas,t_ref,T2"
     else
-      tstring0 = "TREFHT_,TREFHT.,tas.,tas_,t_ref.,t_ref_,T2.,T2_"
       tstring1 = "TREFHT,tas,t_ref,T2"
     end if
   end if
+  sstr := str_split(tstring1,",")
+
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
         namelist_trefht(gg+maxnumobs) =  names(gg)+" | missing | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)  ; set to missing as default
@@ -543,6 +532,8 @@ begin
      delete(moc_i)
   end if 
 
+  sstr := str_split("MOC,msftmyz,stfmmc,msftyz,msftmz",",")
+
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
         namelist_moc(gg+maxnumobs) =  names(gg)+" | missing | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)  ; set to missing as default
@@ -691,6 +682,7 @@ begin
      delete(aice_nh_i)
   end if 
 
+  sstr := str_split("aice,siconc,siconca,sic,CN",",")
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
         namelist_aice_nh(gg+maxnumobs) =  names(gg)+" | missing | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg) ; set to missing as default
