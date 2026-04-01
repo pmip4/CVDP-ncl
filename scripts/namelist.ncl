@@ -209,30 +209,59 @@ begin
      delete(ts_i)
   end if  
   
-  if (case_sens.eq."CMIP_ONLY") then
-    tstring1 = "ts_Amon,tsAmon"
+  if (case_sens.eq."True") then
+     tstring1 = "TS,ts,t_surf,sst,tos"        ; list in order of likelihood/preference: CESM name, CMIP name, other
   else
-    if (case_sens.eq."True") then
-      tstring1 = "TS,ts,t_surf,sst"
-    else
-      tstring1 = "TS,t_surf,sst"
-    end if
+     tstring1 = "TS,t_surf,sst,tos"
   end if
   sstr := str_split(tstring1,",")
-  
+
   do gg = 0,nsim-1
-    ;print("ls "+paths(gg)+"*{"+tstring0+"}*.nc 2> /dev/null")
-    fsst = systemfunc("ls "+paths(gg)+"*{"+tstring0+"}*.nc 2> /dev/null")   ; /dev/null suppresses all standard error output
-     if (dimsizes(fsst).eq.1) then
-        namelist_ts(gg+maxnumobs) =  names(gg)+" | "+fsst(0)+" | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)   ; grab first file
-     else
-        tpath = str_sub_str(paths(gg),"/*/","/{"+tstring1+"}/")     ; explicitly specify TS,ts in directory structure to eliminate "/tsmin/" being used
-        namelist_ts(gg+maxnumobs) =  names(gg)+" | "+tpath+"*{"+tstring0+"}*.nc | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)
-        delete(tpath)
-     end if
-     delete(fsst)
+     do hh = 0,dimsizes(sstr)-1
+        namelist_ts(gg+maxnumobs) =  names(gg)+" | missing | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)  ; set to missing as default
+        fsst := systemfunc("bash -c 'ls "+paths(gg)+"*."+sstr(hh)+".*.nc 2> /dev/null'")   ; /dev/null suppresses all standard error output
+        if (.not.ismissing(fsst(0))) then
+           if (dimsizes(fsst).eq.1) then
+              fsst@path = fsst
+           else
+              fsst@path = paths(gg)+"*."+sstr(hh)+".*.nc"
+           end if
+           namelist_ts(gg+maxnumobs) =  names(gg)+" | "+fsst@path+" | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)
+           break
+        else  ; try different method to find files
+           tpath := str_sub_str(paths(gg),"/*/","/"+sstr(hh)+"/") 
+           tpath = str_sub_str(tpath,"/*_","/"+sstr(hh)+"_")
+           fsst2 := systemfunc("bash -c 'ls "+tpath+"*.nc 2> /dev/null'")
+           if (.not.ismissing(fsst2(0))) then
+              textval = True
+              do jj = 0,dimsizes(fsst2)-1
+                 u = addfile(fsst2(jj),"r")
+                 if (str_match_bool(fsst2(jj),sstr(hh)).and.isfilevar(u,sstr(hh))) then   ; make sure all files identified have sstr(hh) in their file name and as a variable in the file
+                 else
+                    textval = False
+                 end if
+                 delete(u)
+              end do
+              if (textval) then
+                 namelist_ts(gg+maxnumobs) =  names(gg)+" | "+tpath+"*.nc | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)
+                 break
+              end if
+           end if
+        end if
+        tpath := str_sub_str(paths(gg),"/*/","/"+sstr(hh)+"/")    ; try a 3rd method, looking for files starting with "$variable_"
+        tpath = str_sub_str(tpath,"/*_","/"+sstr(hh)+"_")
+        fsst3 := systemfunc("bash -c 'ls "+tpath+sstr(hh)+"_*.nc 2> /dev/null'")
+        if (.not.ismissing(fsst3(0))) then
+           namelist_ts(gg+maxnumobs) =  names(gg)+" | "+tpath+sstr(hh)+"_*.nc | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)
+           break
+        end if
+        fsst4 := systemfunc("bash -c 'ls "+tpath+sstr(hh)+".*.nc 2> /dev/null'")     ; try a 4th method, looking for files starting with "$variable."
+        if (.not.ismissing(fsst4(0))) then
+           namelist_ts(gg+maxnumobs) =  names(gg)+" | "+tpath+sstr(hh)+".*.nc | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)
+           break
+        end if
+     end do
   end do  
-  delete([/tstring0,tstring1/])
   asciiwrite("namelist_byvar/namelist_ts",namelist_ts)
 ;------- PSL section----------------------------  
   namelist_psl = new(nsim+maxnumobs,string)
@@ -260,14 +289,10 @@ begin
      delete(psl_i)
   end if  
   
-  if (case_sens.eq."CMIP_ONLY") then
-    tstring1 = "psl_Amon,pslAmon"
+  if (case_sens.eq."True") then
+     tstring1 = "PSL,psl,SLP,slp"       ; list in order of likelihood/preference: CESM name, CMIP name, other
   else
-    if (case_sens.eq."True") then
-      tstring1 = "PSL,psl,SLP,slp"
-    else
-      tstring1 = "PSL,slp"
-    end if
+     tstring1 = "PSL,slp"
   end if
   sstr := str_split(tstring1,",")
 
@@ -317,7 +342,6 @@ begin
         end if
      end do
   end do  
-  delete([/tstring0,tstring1/])
   asciiwrite("namelist_byvar/namelist_psl",namelist_psl)
 ;------- TREFHT section----------------------------  
   namelist_trefht = new(nsim+maxnumobs,string)
@@ -345,14 +369,10 @@ begin
      delete(trefht_i)
   end if 
   
-  if (case_sens.eq."CMIP_ONLY") then
-    tstring1 = "tas_Amon,tasAmon"
+  if (case_sens.eq."True") then
+     tstring1 = "TREFHT,tas,t_ref,T2"   ; list in order of likelihood/preference: CESM name, CMIP name, other
   else
-    if (case_sens.eq."True") then
-      tstring1 = "TREFHT,tas,t_ref,T2"
-    else
-      tstring1 = "TREFHT,tas,t_ref,T2"
-    end if
+     tstring1 = "TREFHT,tas,t_ref,T2"
   end if
   sstr := str_split(tstring1,",")
 
@@ -435,6 +455,7 @@ begin
      tstring1 = "PRECT,PRECC,pr,precip,prate,prcp"
   end if
   sstr := str_split(tstring1,",")
+
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
         namelist_prect(gg+maxnumobs) =  names(gg)+" | missing | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg)  ; set to missing as default
@@ -532,7 +553,12 @@ begin
      delete(moc_i)
   end if 
 
-  sstr := str_split("MOC,msftmyz,stfmmc,msftyz,msftmz",",")
+  if (case_sens.eq."True") then
+     tstring1 = "MOC,msftmyz,msftmz,stfmmc"   ; list in order of likelihood/preference: CESM name, CMIP name, other
+  else
+     tstring1 = "MOC,msftmyz,msftmz,stfmmc"
+  end if
+  sstr := str_split(tstring1,",")
 
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
@@ -682,7 +708,13 @@ begin
      delete(aice_nh_i)
   end if 
 
-  sstr := str_split("aice,siconc,siconca,sic,CN",",")
+  if (case_sens.eq."True") then
+     tstring1 = "aice_nh,aice,siconc,sic,CN"   ; list in order of likelihood/preference: CESM name, CMIP name, other
+  else                                         ; aice_nh (CESM1 nomenclature used in some data) should be checked before aice 
+     tstring1 = "aice_nh,aice,siconc,sic,CN"
+  end if
+  sstr := str_split(tstring1,",")
+
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
         namelist_aice_nh(gg+maxnumobs) =  names(gg)+" | missing | "+syear(gg)+" | "+eyear(gg)+" | "+names_EM(gg) ; set to missing as default
@@ -752,6 +784,13 @@ begin
      end if
      delete(aice_sh_i)
   end if 
+
+  if (case_sens.eq."True") then
+     tstring1 = "aice_sh,aice,siconc,sic,CN"   ; list in order of likelihood/preference: CESM name, CMIP name, other
+  else                                         ; aice_sh (CESM1 nomenclature used in some data) should be checked before aice 
+     tstring1 = "aice_sh,aice,siconc,sic,CN"
+  end if
+  sstr := str_split(tstring1,",")
 
   do gg = 0,nsim-1
      do hh = 0,dimsizes(sstr)-1
