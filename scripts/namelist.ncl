@@ -47,6 +47,7 @@ begin
   names_EM = new(nsim,"string")
   names_EM = names_EM@_FillValue
   EM_num = new(nsim,integer)
+  pairkey = new(nsim,"string")     ; runstyle 3 only: model pairing key from 6th namelist column
 
 ;  So if na does not have 5 str_get_field entries:
 ;     - 1 - Verify runstyle eq 1, if not exit out and print descriptive error message
@@ -68,7 +69,7 @@ begin
            EM_num(gg) = r1cntr
            r1cntr = r1cntr-1
         else
-           print("Warning! CVDP set to run in Ensemble Mode (runstyle=2), but ensemble numbers are not assigned to each run in namelist. See documentation. Not creating variable namelists.")
+           print("Warning! CVDP set to run in Ensemble Mode (runstyle="+runstyle+"), but ensemble/group numbers are not assigned to each run in namelist. See documentation. Not creating variable namelists.")
            exit
         end if
      else
@@ -80,6 +81,13 @@ begin
            temp = str_split(names_EM(gg),"-")
            EM_num(gg) = toint(temp(0))
            delete(temp)
+           if (runstyle.eq.3) then
+              pairkey(gg) = str_strip(str_get_field(na(gg),6,delim))
+              if (ismissing(pairkey(gg)).or.pairkey(gg).eq."") then
+                 print("Warning! CVDP set to run in Multi-model Ensemble Mode (runstyle=3), but no model pairing key (6th namelist column) is set for "+names(gg)+". See documentation. Not creating variable namelists.")
+                 exit
+              end if
+           end if
         end if
      end if
   end do
@@ -105,18 +113,83 @@ begin
      end if
      yspan := eyear(wind) - syear(wind)
      if (min(yspan).ne.max(yspan)) then
-        print("namelist.ncl: Each member of an ensemble must span the same number of years. Resetting "+names_EM(wind(0))+" ensemble to common year span of "+min(yspan)+" years.") 
-        eyear(wind) = syear(wind)+min(yspan)
+        if (runstyle.eq.3) then     ; models within a multi-model group may legitimately span differing numbers of years
+           print("namelist.ncl: Note: members of multi-model group "+names_EM(wind(0))+" span differing numbers of years ("+(min(yspan)+1)+" to "+(max(yspan)+1)+" years). This is permitted in runstyle 3.")
+        else
+           print("namelist.ncl: Each member of an ensemble must span the same number of years. Resetting "+names_EM(wind(0))+" ensemble to common year span of "+min(yspan)+" years.")
+           eyear(wind) = syear(wind)+min(yspan)
+        end if
      end if
 ;     if (.not.all(syear(wind(0)).eq.syear(wind))) then
 ;        print("namelist.ncl: Each member of an ensemble must start on the same year. Resetting "+names_EM(wind(0))+" ensemble to common start year.") 
 ;        syear(wind) = max(syear(wind))
 ;     end if
 ;     if (.not.all(eyear(wind(0)).eq.eyear(wind))) then
-;        print("namelist.ncl: Each member of an ensemble must start on the same year. Resetting "+names_EM(wind(0))+" ensemble to common end year.") 
+;        print("namelist.ncl: Each member of an ensemble must start on the same year. Resetting "+names_EM(wind(0))+" ensemble to common end year.")
 ;        eyear(wind) = min(eyear(wind))
 ;     end if
   end do
+
+;----- Runstyle 3: validate the experiment/control model pairings, write them to      -----
+;----- namelist_byvar/namelist_pairing (used by multi_model_stats.ncl), and then      -----
+;----- relabel the model rows as individual simulations so that the diagnostics       -----
+;----- scripts run in their (grid-agnostic) individual simulation mode.               -----
+  if (runstyle.eq.3) then
+     ctl_group = getenv("CONTROL_GROUP")
+     nGRP = max(EM_num)
+     grp_name = new(nGRP,"string")     ; group name = text following the group number in the 5th namelist column
+     do gg = 1,nGRP
+        wind := ind(EM_num.eq.gg)
+        temp = str_split(names_EM(wind(0)),"-")
+        grp_name(gg-1) = str_join(temp(1:),"-")
+        delete(temp)
+        do hh = 0,dimsizes(wind)-1     ; each model may only appear once per group
+           if (num(pairkey(wind).eq.pairkey(wind(hh))).ge.2) then
+              print("namelist.ncl: The model pairing key "+pairkey(wind(hh))+" is used more than once within group "+names_EM(wind(0))+". Each model may appear only once per group. Exiting.")
+              exit
+           end if
+        end do
+     end do
+     if (num(grp_name.eq.ctl_group).ne.1) then
+        print("namelist.ncl: Exactly one group in namelist must match the control_group_name set in driver.ncl ("+ctl_group+"), but "+num(grp_name.eq.ctl_group)+" do. Check the group names in the 5th namelist column. Exiting.")
+        exit
+     end if
+     temp = ind(grp_name.eq.ctl_group)
+     ctl_num = temp(0)+1               ; group number of the control group
+     delete(temp)
+
+     pairing = new(nsim,"string")      ; one row per paired experiment simulation
+     pcntr = 0
+     do gg = 0,nsim-1
+        if (EM_num(gg).eq.ctl_num) then
+           continue
+        end if
+        cmatch := ind(EM_num.eq.ctl_num.and.pairkey.eq.pairkey(gg))
+        if (ismissing(cmatch(0))) then
+           print("namelist.ncl: Warning: no "+ctl_group+" simulation found for model "+pairkey(gg)+" ("+names(gg)+"). This model will be excluded from the multi-model statistics.")
+        else
+           pairing(pcntr) = pairkey(gg)+" | "+grp_name(EM_num(gg)-1)+" | "+names(gg)+" | "+syear(gg)+" | "+eyear(gg)+" | "+ \
+                            names(cmatch(0))+" | "+syear(cmatch(0))+" | "+eyear(cmatch(0))
+           pcntr = pcntr+1
+        end if
+     end do
+     if (pcntr.eq.0) then
+        print("namelist.ncl: No paired experiment/control simulations found for runstyle 3. Check the group names (5th column) and pairing keys (6th column) in namelist. Exiting.")
+        exit
+     end if
+     if (.not.isfilepresent2("namelist_byvar/")) then
+        system("mkdir namelist_byvar")
+     end if
+     asciiwrite("namelist_byvar/namelist_pairing",pairing(:pcntr-1))
+
+     r3cntr = -1                       ; relabel every model row with an individual simulation tag (mirroring runstyle 1)
+     do gg = 0,nsim-1
+        names_EM(gg) = r3cntr+"-Individual Simulation"
+        EM_num(gg) = r3cntr
+        r3cntr = r3cntr-1
+     end do
+     delete([/pairing,grp_name,ctl_group,ctl_num,pcntr,r3cntr,nGRP/])
+  end if
 
   do gg = 0,nsim-1         ; if path ends in .nc remove it. (It will get appended to the end of the path automatically when searching below.)
      paths(gg) = str_sub_str(paths(gg),".nc","")
