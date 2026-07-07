@@ -782,9 +782,9 @@ begin
   end if 
 
   if (case_sens.eq."True") then
-     tstring1 = "aice_nh,aice,siconc,sic,CN"   ; list in order of likelihood/preference: CESM name, CMIP name, other
+     tstring1 = "aice_nh,aice,siconc,sic,CN,siconca"   ; list in order of likelihood/preference: CESM name, CMIP name, other
   else                                         ; aice_nh (CESM1 nomenclature used in some data) should be checked before aice 
-     tstring1 = "aice_nh,aice,siconc,sic,CN"
+     tstring1 = "aice_nh,aice,siconc,sic,CN,siconca"
   end if
   sstr := str_split(tstring1,",")
 
@@ -859,9 +859,9 @@ begin
   end if 
 
   if (case_sens.eq."True") then
-     tstring1 = "aice_sh,aice,siconc,sic,CN"   ; list in order of likelihood/preference: CESM name, CMIP name, other
+     tstring1 = "aice_sh,aice,siconc,sic,CN,siconca"   ; list in order of likelihood/preference: CESM name, CMIP name, other
   else                                         ; aice_sh (CESM1 nomenclature used in some data) should be checked before aice 
-     tstring1 = "aice_sh,aice,siconc,sic,CN"
+     tstring1 = "aice_sh,aice,siconc,sic,CN,siconca"
   end if
   sstr := str_split(tstring1,",")
 

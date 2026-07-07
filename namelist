@@ -1,28 +1,8 @@
-ACCESS-ESM1-5_historical | /data/oacd/curated_ESGF_replica/ACCESS-ESM1-5/historical/ | 1850 | 2014 | 1-CMIP6
-AWI-ESM-1-1-LR_historical | /data/oacd/curated_ESGF_replica/AWI-ESM-1-1-LR/historical/ | 1850 | 2014 | 1-CMIP6
-BCC-CSM1-1_historical | /data/oacd/curated_ESGF_replica/bcc-csm1-1/historical/ | 1850 | 2012 | 1-CMIP6
-CCSM4_historical | /data/oacd/curated_ESGF_replica/CCSM4/historical/ | 1850 | 2005 | 2-CMIP5
-CESM2_historical | /data/oacd/curated_ESGF_replica/CESM2/historical/ | 1850 | 2014 | 1-CMIP6
-CESM2-FV2_historial | /data/oacd/curated_ESGF_replica/CESM2-FV2/historical/ | 1850 | 2014 | 1-CMIP6
-CNRM-CM5_historical | /data/oacd/curated_ESGF_replica/CNRM-CM5/historical/ | 1850 | 2005 | 2-CMIP5
-CNRM-CM6-1_historical | /data/oacd/curated_ESGF_replica/CNRM-CM6-1/historical/ | 1850 | 2014 | 1-CMIP6
-CSIRO-Mk3-6-0_historical | /data/oacd/curated_ESGF_replica/CSIRO-Mk3-6-0/historical/ | 1850 | 2005 | 2-CMIP5
-CSIRO-Mk3L-1-2_historical | /data/oacd/curated_ESGF_replica/CSIRO-Mk3L-1-2/historical/ | 1851 | 2000 | 2-CMIP5
-FGOALS-f3-L_historical | /data/oacd/curated_ESGF_replica/FGOALS-f3-L/historical/ | 1850 | 2014 | 1-CMIP6
-FGOALS-g2_historical | /data/oacd/curated_ESGF_replica/FGOALS-g2/historical/ | 1900 | 2014 | 1-CMIP6
-FGOALS-g3_historical | /data/oacd/curated_ESGF_replica/FGOALS-g3/historical/ | 1850 | 2014 | 1-CMIP6
-GISS-E2-1-G_historical | /data/oacd/curated_ESGF_replica/GISS-E2-1-G/historical/ | 1850 | 2014 | 1-CMIP6
-GISS-E2-R_historical | /data/oacd/curated_ESGF_replica/GISS-E2-R/historical/ | 1850 | 2005 | 2-CMIP5
-HadGEM2-CC_historical | /data/oacd/curated_ESGF_replica/HadGEM2-CC/historical/ | 1860 | 2004 | 2-CMIP5
-HadGEM2-ES_historical | /data/oacd/curated_ESGF_replica/HadGEM2-ES/historical/ | 1860 | 2004 | 2-CMIP5
-HadGEM3-GC31-LL_historical | /data/oacd/curated_ESGF_replica/HadGEM3-GC31-LL/historical/ | 1850 | 2014 | 1-CMIP6
-INM-CM4-8_historical | /data/oacd/curated_ESGF_replica/INM-CM4-8/historical/ | 1850 | 2014 | 1-CMIP6
-IPSL-CM5A-LR_historical | /data/oacd/curated_ESGF_replica/IPSL-CM5A-LR/historical/ | 1850 | 2005 | 2-CMIP5
-IPSL-CM6A-LR_historical | /data/oacd/curated_ESGF_replica/IPSL-CM6A-LR/historical/ | 1850 | 2014 | 1-CMIP6
-MIROC-ES2L_historical | /data/oacd/curated_ESGF_replica/MIROC-ES2L/historical/ | 1850 | 2014 | 1-CMIP6
-MIROC-ESM_historical | /data/oacd/curated_ESGF_replica/MIROC-ESM/historical/ | 1850 | 2005 | 2-CMIP5
-MPI-ESM-P_historical | /data/oacd/curated_ESGF_replica/MPI-ESM-P/historical/ | 1850 | 2005 | 2-CMIP5
-MRI-CGCM3_historical | /data/oacd/curated_ESGF_replica/MRI-CGCM3/historical/ | 1850 | 2005 | 2-CMIP5
-MRI-ESM2-0_historical | /data/oacd/curated_ESGF_replica/MRI-ESM2-0/historical/ | 1850 | 2014 | 1-CMIP6
-NESM3_historical | /data/oacd/curated_ESGF_replica/NESM3/historical/ | 1850 | 2014 | 1-CMIP6
-NorESM2-LM_historical | /data/oacd/curated_ESGF_replica/NorESM2-LM/historical/ | 1950 | 2014  | 1-CMIP6
+GISS-E2-1-G_abrupt4xCO2 | /data/oacd/curated_ESGF_replica/GISS-E2-1-G/abrupt4xCO2/ | 1950 | 1999 | 1-abrupt4xCO2 | GISS-E2-1-G
+GISS-E2-1-G_lig127k | /data/oacd/curated_ESGF_replica/GISS-E2-1-G/lig127k/ | 2900 | 2999 | 2-lig127k | GISS-E2-1-G
+GISS-E2-1-G_midHolocene | /data/oacd/curated_ESGF_replica/GISS-E2-1-G/midHolocene/ | 2900 | 2999 | 3-midHolocene | GISS-E2-1-G
+GISS-E2-1-G_piControl | /data/oacd/curated_ESGF_replica/GISS-E2-1-G/piControl/ | 4150 | 5000 | 4-piControl | GISS-E2-1-G
+INM-CM4-8_abrupt4xCO2 | /data/oacd/curated_ESGF_replica/INM-CM4-8/abrupt4xCO2/ | 1950 | 1999 | 1-abrupt4xCO2 | INM-CM4-8
+INM-CM4-8_lig127k | /data/oacd/curated_ESGF_replica/INM-CM4-8/lig127k/ | 1900 | 1999 | 2-lig127k | INM-CM4-8
+INM-CM4-8_midHolocene | /data/oacd/curated_ESGF_replica/INM-CM4-8/midHolocene/ | 1880 | 2079 | 3-midHolocene | INM-CM4-8
+INM-CM4-8_piControl | /data/oacd/curated_ESGF_replica/INM-CM4-8/piControl/ | 1850 | 2380 | 4-piControl | INM-CM4-8

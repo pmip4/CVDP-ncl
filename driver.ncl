@@ -3,22 +3,22 @@
 ; to a file named file.out, type: ncl driver.ncl >&! file.out &
 ; 
 ;=====================================================================================================
-  runstyle = 1        ; See online documentation! runstyle 2 requires an additional column of data in namelist, runstyle 3 requires two.
+  runstyle = 3        ; See online documentation! runstyle 2 requires an additional column of data in namelist, runstyle 3 requires two.
                       ; 1 = Individual simulations mode. This is equivalent to running previous versions of the CVDP.
                       ; 2 = Ensemble mode. This is similar to running version 1.0 of the CVDP-LE.
                       ; 3 = Multi-model ensemble mode. Multiple models running the same experiment(s); each model is paired
                       ;     with its own control simulation, and multi-model mean/spread/sign-agreement statistics are
                       ;     computed on a common 1x1 degree grid and written to netCDF.
 
-  outdir            = "/project/diag/Comparison1/"   ; Set location of output files   (must end in a "/")
-  webpage_title     = "Webpage title goes here"      ; Set webpage title                                                                
-  remove_trend_obs  = "QuadraticTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean   (see documentation)
-  remove_trend_model= "QuadraticTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean, rmGMST_EM, rmEM  (see documentation)
-  ensemble_mean_dir = "/project/cas/CVDP-EM_ncl/"     ; directory where the ensemble means should be located when remove_trend_model = "rmGMST_EM" or "rmEM"
+  outdir            = "/data/oacd/CVDP/test_output/MMM_runstyle/"   ; Set location of output files   (must end in a "/")
+  webpage_title     = "MMM Test"      ; Set webpage title                                                                
+  remove_trend_obs  = "LinearTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean   (see documentation)
+  remove_trend_model= "LinearTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean, rmGMST_EM, rmEM  (see documentation)
+  ensemble_mean_dir = "/data/oacd/CVDP/test_output/CVDP-EM_ncl/"     ; directory where the ensemble means should be located when remove_trend_model = "rmGMST_EM" or "rmEM"
 
   control_group_name   = "piControl"         ; (runstyle=3 only) name of the group (5th namelist column, text after the group number) containing each
                                              ; model's control simulation. Anomalies are computed as experiment minus this group, paired by model (6th column).
-  mmm_write_individual = "False"             ; (runstyle=3 only) True = also write per-model regridded anomaly stacks to the multi-model output file.
+  mmm_write_individual = "True"             ; (runstyle=3 only) True = also write per-model regridded anomaly stacks to the multi-model output file.
    
   namelists_only       = "False"             ; Set to True to only create the variable namelists. Useful upon running the package for the first time to 
                                              ; verify that the correct files are being selected by the package. (See files in namelist_byvar/ directory)
@@ -32,7 +32,7 @@
   modular =  "False"                                      ; True = Run only those CVDP scripts specified in modular_list. False = Run all CVDP scripts (Default)
   modular_list = "amoc,amv,ipv"     ; Example: modular_list = "amoc,amv,pr.trends_timeseries,ipv"   For a list of available scripts see complete_list at line 57. 
 
-  zp = "~asphilli/CESM-diagnostics/CVDP/Release/v6.1.0/scripts/"                            ; directory path of CVDP NCL scripts. (must end in a "/")
+  zp = "/data/oacd/CVDP/CVDP-ncl/scripts/"                            ; directory path of CVDP NCL scripts. (must end in a "/")
                                              ; Examples: "scripts/" if all code is local, or on NCAR's CGD or CISL systems: "~asphilli/CESM-diagnostics/CVDP/Release/v6.0.0/scripts/"
                                              ; Regardless of this setting the following files should be in one directory: namelist, driver.ncl, and namelist_obs. 
                                              ; If pointing to code in ~asphilli make sure the driver script version #s match between this script and the script in ~asphilli.  

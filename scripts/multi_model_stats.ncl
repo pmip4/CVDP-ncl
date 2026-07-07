@@ -122,36 +122,25 @@ begin
      return(ret)
   end if
 
-  is_curv = False
-  if (isatt(arr,"coordinates")) then
-     if (.not.(str_squeeze(arr@coordinates).eq."")) then   ; some data have coordinates incorrectly set to ""
-        is_curv = True
+  is_rect = False                             ; rectilinear map class: (lat,lon) dims, or any dim naming whose 1D
+  if (iscoord(arr,dnames(0)).and.iscoord(arr,dnames(1))) then   ; coordinates have latitude/longitude units (sea ice fields
+     if (dnames(0).eq."lat".and.dnames(1).eq."lon") then        ; on rectilinear grids use j/i and j2/i2 dim names)
+        is_rect = True
+     else
+        c0 := arr&$dnames(0)$
+        c1 := arr&$dnames(1)$
+        if (isatt(c0,"units").and.isatt(c1,"units")) then
+           if (c0@units.eq."degrees_north".and.c1@units.eq."degrees_east") then
+              is_rect = True
+           end if
+        end if
+        delete([/c0,c1/])
      end if
   end if
-  if (is_curv) then                           ; curvilinear class (sea ice, native ocean grid fields)
-     coordatt = str_split(arr@coordinates," ")
-     if (dimsizes(coordatt).ne.2) then
-        return(ret)
-     end if
-     if (.not.(isfilevar(f,coordatt(0)).and.isfilevar(f,coordatt(1)))) then
-        return(ret)
-     end if
-     lat2d = tofloat(f->$coordatt(0)$)
-     lon2d = tofloat(f->$coordatt(1)$)
-     lon2d = where(lon2d.lt.0,lon2d+360.,lon2d)
-     arr := mmm_standardize(arr)
-     arr@lat2d = lat2d
-     arr@lon2d = lon2d
-     arr@class = "map_curv"
-     arr@valid = True
-     return(arr)
-  end if
-
-  if (dnames(0).eq."lat".and.dnames(1).eq."lon") then      ; rectilinear map class
-     if (.not.(iscoord(arr,"lat").and.iscoord(arr,"lon"))) then
-        return(ret)
-     end if
-     arr := mmm_standardize(arr)
+  if (is_rect) then                           ; checked first: many rectilinear fields carry a stray coordinates
+     arr := mmm_standardize(arr)              ; attribute (e.g. "time lat lon") that must not send them into the
+     arr!0 = "lat"                            ; curvilinear class
+     arr!1 = "lon"
      if (arr&lat(0).gt.arr&lat(dimsizes(arr&lat)-1)) then
         arr := arr(::-1,:)
      end if
@@ -163,11 +152,9 @@ begin
      return(arr)
   end if
 
-  if (dnames(0).eq."lev".and.dnames(1).eq."lat") then      ; lev x lat class (AMOC)
-     if (.not.(iscoord(arr,"lev").and.iscoord(arr,"lat"))) then
-        return(ret)
-     end if
+  if (dnames(0).eq."lev".and.iscoord(arr,"lev").and.iscoord(arr,dnames(1))) then   ; lev x lat class (AMOC; the meridional dim is named lat_amoc)
      arr := mmm_standardize(arr)
+     arr!1 = "lat"                            ; standardize the meridional dimension name
      if (arr&lev(0).gt.arr&lev(dimsizes(arr&lev)-1)) then
         arr := arr(::-1,:)
      end if
@@ -175,6 +162,37 @@ begin
         arr := arr(:,::-1)
      end if
      arr@class = "levlat"
+     arr@valid = True
+     return(arr)
+  end if
+
+  is_curv = False                             ; curvilinear class (sea ice, native ocean grid fields):
+  if (isatt(arr,"coordinates")) then          ; coordinates attribute naming the lat2d_*/lon2d_* helper variables
+     coordatt = str_split(str_squeeze(arr@coordinates)," ")
+     if (dimsizes(coordatt).eq.2) then
+        lati = ind(str_match_bool(coordatt,"lat2d"))     ; accept either ordering of the two names
+        loni = ind(str_match_bool(coordatt,"lon2d"))
+        if (dimsizes(lati).eq.1.and.dimsizes(loni).eq.1) then
+           if (.not.(ismissing(lati).or.ismissing(loni))) then
+              latname = coordatt(lati)
+              lonname = coordatt(loni)
+              if (isfilevar(f,latname).and.isfilevar(f,lonname)) then
+                 is_curv = True
+              end if
+           end if
+        end if
+        delete([/lati,loni/])
+     end if
+     delete(coordatt)
+  end if
+  if (is_curv) then
+     lat2d = tofloat(f->$latname$)
+     lon2d = tofloat(f->$lonname$)
+     lon2d = where(lon2d.lt.0,lon2d+360.,lon2d)
+     arr := mmm_standardize(arr)
+     arr@lat2d = lat2d
+     arr@lon2d = lon2d
+     arr@class = "map_curv"
      arr@valid = True
      return(arr)
   end if

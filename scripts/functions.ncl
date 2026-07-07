@@ -887,10 +887,10 @@ function data_read_in_ice(zpath:string,vn:string,yearS:integer,yearE:integer)
 local zpath,vn,cpath0,ta,tfiles,c,arr,farr,yearS,yearE,mocheck,dimC,lev,opt,farrF
 begin
   if (vn.eq."aice_nh") then
-     vname = (/"aice_nh","aice","sic","siconc","SIC","CN","ice","icec","SEAICE"/)
+     vname = (/"aice_nh","aice","sic","siconc","SIC","CN","ice","icec","SEAICE","siconca"/)
   end if
   if (vn.eq."aice_sh") then
-     vname = (/"aice_sh","aice","sic","siconc","SIC","CN","ice","icec","SEAICE"/)
+     vname = (/"aice_sh","aice","sic","siconc","SIC","CN","ice","icec","SEAICE","siconca"/)
   end if
 
   if (ismissing(zpath) ) then
@@ -1639,6 +1639,11 @@ begin
         end if
      end if
   end if
+  if (isatt(arr_temp,"coordinates").and..not.isatt(arr_temp,"lat2d")) then
+     delete(arr_temp@coordinates)     ; rectilinear data can carry a stray coordinates attribute from the
+  end if                              ; source files (e.g. the CMIP6 "type" scalar coordinate); callers use
+                                      ; the coordinates attribute to detect curvilinear grids, so remove it
+                                      ; whenever no 2d coordinates were attached
   return(arr_temp)
 end
 ;=================================================================================================
@@ -2588,10 +2593,10 @@ begin
      vname = (/"PRECC","PRECL","PRECT","pr","PPT","ppt","p","P","precip","PRECIP","tp","prcp","prate","prect"/)
   end if
   if (vn.eq."AICE_NH") then
-     vname = (/"aice_nh","aice","sic","siconc","SIC","CN","ice","icec"/)
+     vname = (/"aice_nh","aice","sic","siconc","SIC","CN","ice","icec","siconca"/)
   end if
   if (vn.eq."AICE_SH") then
-     vname = (/"aice_sh","aice","sic","siconc","SIC","CN","ice","icec"/)
+     vname = (/"aice_sh","aice","sic","siconc","SIC","CN","ice","icec","siconca"/)
   end if
   if (vn.eq."SSH") then
      vname = (/"SSH","zos","ssh"/)
