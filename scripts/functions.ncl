@@ -1293,14 +1293,114 @@ end
 ;=================================================================================================
 ; Create expanding/contracting links for website
 ;
+undef("mmm_badge_links")
+function mmm_badge_links(ipath:string,iname:string)
+; Given the file name of a Bias (indmemdiff) image from the index.html tables, return
+; badge links to the matching multi-model mean figures (mmm.<experiment group>_minus_
+; <control group>.<diagnostic>.png, created by multi_model_graphics.ncl in runstyle 3),
+; one badge per experiment group (and per field, for figures combining several fields).
+; Returns "" when no multi-model figures match, so runstyles 1 and 2 are unaffected.
+; The index images are named after the diagnostics scripts' plot files while the
+; multi-model figures are named after the cvdp_data variables, so the coupled modes
+; (dot-separated names such as amv.lp.prreg or nino34.spatialcomp.elnino.pr) and the
+; index patterns (no _mon/_ndjfm suffix) need translating.
+local ipath,iname,otxt,quote,dloc,left,season,tokens,nt,stems,labs,comp,fields,tt,ss, \
+      cand,mfils,mm,mname,tag,pairname,mloc,dtable,dstems
+begin
+  otxt = ""
+  quote = str_get_dq()
+  dloc = str_index_of_substr(iname,".indmemdiff.",1)
+  if (ismissing(dloc)) then
+     return(otxt)
+  end if
+  left = str_get_cols(iname,0,dloc-1)
+  season = str_sub_str(str_sub_str(iname,left+".indmemdiff.",""),"png","")   ; "" or e.g. "djf1."
+  season = str_sub_str(season,".","")
+
+  is_comp = False
+  mloc = str_index_of_substr(left,"nino34.spatialcomp",1)
+  if (.not.ismissing(mloc)) then
+     if (mloc.eq.0) then
+        is_comp = True
+     end if
+  end if
+  if (is_comp) then   ; ENSO composites: nino34.spatialcomp[.<elnino|lanina>][.<pr|zos>].indmemdiff.<season>.png
+     comp = "spacomp"
+     fields = (/"sst","tas","psl"/)          ; the base composite figure combines sst, tas and psl
+     tokens = str_split(left,".")
+     nt = dimsizes(tokens)
+     do tt = 2,nt-1
+        if (tokens(tt).eq."elnino".or.tokens(tt).eq."lanina") then
+           comp = tokens(tt)+"_spacomp"
+        else
+           fields := (/tokens(tt)/)
+        end if
+     end do
+     stems = "nino34_"+comp+"_"+fields+"_"+season
+     if (dimsizes(fields).gt.1) then
+        labs = " "+fields
+     else
+        labs = (/""/)
+     end if
+  else
+     dtable = (/"amv","amv.lp","amv.prreg","amv.lp.prreg","amv.tassstreg","amv.lp.tassstreg","amv.zosreg","amv.lp.zosreg", \
+                "pdv","pdv.prreg","pdv.tassstreg","ipv","ipv.prreg","ipv.tassstreg","ipv.zosreg", \
+                "ipv.henley","ipv.henley.prreg","ipv.henley.tassstreg","ipv.henley.zosreg", \
+                "amoc.mean.ann","amoc.pattern.ann","amoc.stddev.ann","amoc.zosreg.ann"/)
+     dstems = (/"amv_pattern_mon","amv_pattern_lowpass_mon","amv_pr_regression_mon","amv_pr_regression_lowpass_mon", \
+                "amv_tas_regression_mon","amv_tas_regression_lowpass_mon","amv_zos_regression_mon","amv_zos_regression_lowpass_mon", \
+                "pdv_pattern_mon","pdv_pr_regression_mon","pdv_tas_regression_mon", \
+                "ipv_pattern_mon","ipv_pr_regression_mon","ipv_tas_regression_mon","ipv_zos_regression_mon", \
+                "ipv_henley_pattern_mon","ipv_henley_pr_regression_mon","ipv_henley_tas_regression_mon","ipv_henley_zos_regression_mon", \
+                "amoc_mean_ann","amoc_pattern_ann","amoc_stddev_ann","amoc_zos_regression_ann"/)
+     if (left.eq."amoc.tassstreg.ann") then   ; the AMOC tas/sst regression figure combines two fields
+        stems = (/"amoc_tas_regression_ann","amoc_sst_regression_ann"/)
+        labs  = (/" tas"," sst"/)
+     else
+        if (num(dtable.eq.left).eq.1) then
+           stems = dstems(ind(dtable.eq.left))
+        else                                  ; plain names: try as-is (e.g. sst_spatialmean_djf), then with a
+           cand = left                        ; season/frequency suffix (nino34_pattern -> nino34_pattern_mon,
+           if (season.ne."") then             ; north_pacific_index_pattern -> ..._ndjfm)
+              cand = cand+"_"+season
+           end if
+           mfils = systemfunc("bash -c 'ls "+ipath+"mmm.*."+cand+".png 2> /dev/null'")
+           if (ismissing(mfils(0))) then
+              stems = cand+"_*"
+           else
+              stems = cand
+           end if
+           delete(mfils)
+        end if
+        labs = (/""/)
+     end if
+  end if
+
+  do ss = 0,dimsizes(stems)-1
+     mfils := systemfunc("bash -c 'ls "+ipath+"mmm.*."+stems(ss)+".png 2> /dev/null'")
+     if (ismissing(mfils(0))) then
+        continue
+     end if
+     do mm = 0,dimsizes(mfils)-1
+        mname = str_sub_str(mfils(mm),ipath,"")                        ; mmm.<exp>_minus_<ctl>.<diagnostic>.png
+        tag = str_get_field(str_sub_str(mname,"mmm.",""),1,".")        ; <exp>_minus_<ctl>
+        pairname = str_sub_str(tag,"_minus_"," minus ")
+        mloc = str_index_of_substr(tag,"_minus_",1)
+        if (.not.ismissing(mloc)) then
+           tag = str_get_cols(tag,0,mloc-1)                            ; label badge with the experiment group name
+        end if
+        otxt = otxt+" <a href="+quote+mname+quote+" class="+quote+"badge badge-success"+quote+" title="+quote+"multi-model mean: "+pairname+quote+">"+tag+labs(ss)+"</a>"
+     end do
+  end do
+  return(otxt)
+end
+
 undef("table_link_setup_le")
 function table_link_setup_le(ipath:string,iname:string,ltxt:string)
-; image name, along with link text. On the Bias (.indmemdiff.png) call, which is the last
+; image name, along with link text. On the Bias (indmemdiff) call, which is the last
 ; badge of each diagnostic cell, badges linking to any multi-model mean figures for the
-; same diagnostic (mmm.<experiment group>_minus_<control group>.<diagnostic>.png,
-; created by multi_model_graphics.ncl in runstyle 3) are appended, one per experiment
-; group; in runstyles 1 and 2 no such figures exist and the output is unchanged.
-local ipath, iname, ltxt, otxt, quote, stem, mfils, mm, mname, tag, mloc
+; same diagnostic are appended, one per experiment group (see mmm_badge_links).
+local ipath, iname, ltxt, otxt, quote
 begin
   quote = str_get_dq()
   if (isfilepresent2(ipath+iname)) then
@@ -1308,22 +1408,8 @@ begin
   else
      otxt = ltxt
   end if
-  if (str_match_bool(iname,".indmemdiff.png")) then
-     stem = str_sub_str(iname,".indmemdiff.png","")
-     mfils = systemfunc("bash -c 'ls "+ipath+"mmm.*."+stem+".png 2> /dev/null'")
-     if (.not.ismissing(mfils(0))) then
-        do mm = 0,dimsizes(mfils)-1
-           mname = str_sub_str(mfils(mm),ipath,"")                        ; mmm.<exp>_minus_<ctl>.<stem>.png
-           tag = str_sub_str(str_sub_str(mname,"mmm.",""),"."+stem+".png","")
-           pairname = str_sub_str(tag,"_minus_"," minus ")
-           mloc = str_index_of_substr(tag,"_minus_",1)
-           if (.not.ismissing(mloc)) then
-              tag = str_get_cols(tag,0,mloc-1)                            ; label badge with the experiment group name
-           end if
-           otxt = otxt+" <a href="+quote+mname+quote+" class="+quote+"badge badge-success"+quote+" title="+quote+"multi-model mean: "+pairname+quote+">"+tag+"</a>"
-        end do
-     end if
-     delete(mfils)
+  if (ltxt.eq."Bias") then
+     otxt = otxt+mmm_badge_links(ipath,iname)
   end if
   return(otxt)
 end
