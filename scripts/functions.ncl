@@ -1295,17 +1295,37 @@ end
 ;
 undef("table_link_setup_le")
 function table_link_setup_le(ipath:string,iname:string,ltxt:string)
-; image name, along with link text
-local ipath, iname, ltxt, otxt, quote
+; image name, along with link text. On the Bias (.indmemdiff.png) call, which is the last
+; badge of each diagnostic cell, badges linking to any multi-model mean figures for the
+; same diagnostic (mmm.<experiment group>_minus_<control group>.<diagnostic>.png,
+; created by multi_model_graphics.ncl in runstyle 3) are appended, one per experiment
+; group; in runstyles 1 and 2 no such figures exist and the output is unchanged.
+local ipath, iname, ltxt, otxt, quote, stem, mfils, mm, mname, tag, mloc
 begin
   quote = str_get_dq()
   if (isfilepresent2(ipath+iname)) then
-     otxt = "<a href="+quote+iname+quote+" class="+quote+"badge badge-info"+quote+">"+ltxt+"</a>" 
+     otxt = "<a href="+quote+iname+quote+" class="+quote+"badge badge-info"+quote+">"+ltxt+"</a>"
   else
      otxt = ltxt
   end if
+  if (str_match_bool(iname,".indmemdiff.png")) then
+     stem = str_sub_str(iname,".indmemdiff.png","")
+     mfils = systemfunc("bash -c 'ls "+ipath+"mmm.*."+stem+".png 2> /dev/null'")
+     if (.not.ismissing(mfils(0))) then
+        do mm = 0,dimsizes(mfils)-1
+           mname = str_sub_str(mfils(mm),ipath,"")                        ; mmm.<exp>_minus_<ctl>.<stem>.png
+           tag = str_sub_str(str_sub_str(mname,"mmm.",""),"."+stem+".png","")
+           pairname = str_sub_str(tag,"_minus_"," minus ")
+           mloc = str_index_of_substr(tag,"_minus_",1)
+           if (.not.ismissing(mloc)) then
+              tag = str_get_cols(tag,0,mloc-1)                            ; label badge with the experiment group name
+           end if
+           otxt = otxt+" <a href="+quote+mname+quote+" class="+quote+"badge badge-success"+quote+" title="+quote+"multi-model mean: "+pairname+quote+">"+tag+"</a>"
+        end do
+     end if
+     delete(mfils)
+  end if
   return(otxt)
-  delete([/ipath,iname,ltxt,otxt,quote/])
 end
 ;=================================================================================================
 undef ("gsn_panel2")

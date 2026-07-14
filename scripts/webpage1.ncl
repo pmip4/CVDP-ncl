@@ -193,11 +193,34 @@ begin
   end if
 
 
-		txt(49) = "<li class="+quote+"list-inline-item"+quote+">Namelists: <a href="+quote+"namelist_obs.html"+quote+">Input</a> | <a href="+quote+"namelist_msftmz.html"+quote+">Derived</a></li>"		
+		txt(49) = "<li class="+quote+"list-inline-item"+quote+">Namelists: <a href="+quote+"namelist_obs.html"+quote+">Input</a> | <a href="+quote+"namelist_msftmz.html"+quote+">Derived</a></li>"
+
+  mmmpages = systemfunc("bash -c 'ls "+OUTDIR+"*.mmm.html 2> /dev/null'")   ; created by multi_model_graphics.ncl (runstyle 3)
+  if (.not.ismissing(mmmpages(0))) then
+     mmmtxt = "<br><li class="+quote+"list-inline-item"+quote+">Multi-Model Means: "
+     do gg = 0,dimsizes(mmmpages)-1
+        mmmname = str_sub_str(mmmpages(gg),OUTDIR,"")
+        mmmtag = str_sub_str(mmmname,".mmm.html","")
+        mloc = str_index_of_substr(mmmtag,"_minus_",1)
+        if (.not.ismissing(mloc)) then
+           mmmtag = str_get_cols(mmmtag,0,mloc-1)     ; label the link with the experiment group name
+        end if
+        if (gg.ge.1) then
+           mmmtxt = mmmtxt+" | "
+        end if
+        mmmtxt = mmmtxt+"<a href="+quote+mmmname+quote+">"+mmmtag+"</a>"
+     end do
+     txt(50) = mmmtxt+"</li>"
+  end if
+
 		txt(65) = "<li class="+quote+"list-inline-item"+quote+">Created: "+systemfunc("date")+"<br>CVDP Version "+VERSION+"<br>"
   txt(66) = "Trend Removal: <div class="+quote+"popup"+quote+" onclick="+quote+"myFunction(event)"+quote+">Reference<span class="+quote+"popuptext"+quote+" id="+quote+"myPopup"+quote+">"+rt_obs+"<br> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<i>Click link to close</i></span></div> |"
   txt(67) = "<div class="+quote+"popup"+quote+" onclick="+quote+"myFunction(event)"+quote+">Simulations<span class="+quote+"popuptext"+quote+" id="+quote+"myPopup"+quote+">"+rt_model+"<br> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<i>Click link to close</i></span></div></li>"
-  txt(68) = "<p class=btext2>Individual Member Mode</p>"
+  if (.not.ismissing(mmmpages(0))) then
+     txt(68) = "<p class=btext2>Multi-Model Ensemble Mode</p>"
+  else
+     txt(68) = "<p class=btext2>Individual Member Mode</p>"
+  end if
 		txt(70) = "</ul></td>"
 		txt(83) = "</tr>"
 		txt(84) = "</table>"

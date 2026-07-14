@@ -13,6 +13,76 @@
 ;
 load "$CVDP_SCRIPTS/functions.ncl"
 
+undef("mmm_fig_sections")
+function mmm_fig_sections()
+; section names for the .mmm.html index pages, mirroring the index.html layout
+begin
+  return((/"Climatological Averages","Standard Deviations","Linear Trends", \
+           "Coupled Modes of Variability","Atmospheric Modes of Variability", \
+           "Regional Indices","Other"/))
+end
+
+undef("mmm_fig_order")
+function mmm_fig_order(base:string)
+; returns a sortable key prefix "SPPPTT" for a diagnostic name: S = section number
+; (see mmm_fig_sections), PPP = position of the diagnostic within its section and
+; TT = season position, all mirroring the row/column ordering of index.html
+local base,prefixes,psec,seasons,np,prank,sec,srank,pp,tmp
+begin
+  prefixes = (/"sst_spatialmean","tas_spatialmean","psl_spatialmean","pr_spatialmean", \
+               "siconc_nh_spatialmean","siconc_sh_spatialmean","zos_spatialmean", \
+               "sst_spatialstddev","tas_spatialstddev","psl_spatialstddev","pr_spatialstddev", \
+               "siconc_nh_spatialstddev","siconc_sh_spatialstddev","zos_spatialstddev", \
+               "sst_trends","tas_trends","psl_trends","pr_trends", \
+               "siconc_nh_trends","siconc_sh_trends","zos_trends", \
+               "nino34_pattern","nino34_spacomp_sst","nino34_spacomp_tas","nino34_spacomp_pr","nino34_spacomp_psl", \
+               "nino34_elnino_spacomp_sst","nino34_elnino_spacomp_tas","nino34_elnino_spacomp_pr","nino34_elnino_spacomp_psl", \
+               "nino34_lanina_spacomp_sst","nino34_lanina_spacomp_tas","nino34_lanina_spacomp_pr","nino34_lanina_spacomp_psl", \
+               "amv_pattern_mon","amv_pattern_lowpass","amv_sst_regression_mon","amv_sst_regression_lowpass", \
+               "amv_tas_regression_mon","amv_tas_regression_lowpass","amv_pr_regression_mon","amv_pr_regression_lowpass", \
+               "pdv_pattern","pdv_sst_regression","pdv_tas_regression","pdv_pr_regression", \
+               "ipv_pattern","ipv_sst_regression","ipv_tas_regression","ipv_pr_regression","ipv_henley","amoc", \
+               "so_pattern","nam_pattern","nao_pattern","sam_pattern","pna_pattern","npo_pattern","psa1_pattern","psa2_pattern", \
+               "atlantic_meridional_mode","atlantic_nino","north_atlantic","north_tropical_atlantic","south_tropical_atlantic", \
+               "nino12","nino3_","nino4_","north_pacific_index","north_pacific_meridional_mode","south_pacific_meridional_mode", \
+               "indian_ocean_dipole","tropical_indian_ocean","southern_ocean"/)
+  psec     = (/0,0,0,0,0,0,0, \
+               1,1,1,1,1,1,1, \
+               2,2,2,2,2,2,2, \
+               3,3,3,3,3, \
+               3,3,3,3, \
+               3,3,3,3, \
+               3,3,3,3, \
+               3,3,3,3, \
+               3,3,3,3, \
+               3,3,3,3,3,3, \
+               4,4,4,4,4,4,4,4, \
+               5,5,5,5,5, \
+               5,5,5,5,5,5, \
+               5,5,5/)
+  seasons = (/"djf","jfm","mam","jja","jas","son","ann","mon","ndjfm","jja0","son0","djf1","mam1"/)
+
+  np = dimsizes(prefixes)
+  prank = np                                  ; unmatched diagnostics sort last, into the "Other" section
+  sec = dimsizes(mmm_fig_sections())-1
+  do pp = 0,np-1
+     ploc = str_index_of_substr(base,prefixes(pp),1)
+     if (.not.ismissing(ploc)) then
+        if (ploc.eq.0) then                   ; first prefix the name starts with sets the ordering
+           prank = pp
+           sec = psec(pp)
+           break
+        end if
+     end if
+  end do
+  tmp = str_split(base,"_")
+  srank = ind(seasons.eq.tmp(dimsizes(tmp)-1))
+  if (ismissing(srank)) then
+     srank = dimsizes(seasons)
+  end if
+  return(sprinti("%1i",sec)+sprinti("%03i",prank)+sprinti("%02i",srank))
+end
+
 begin
   print("Starting: multi_model_graphics.ncl")
   OUTDIR      = getenv("OUTDIR")
@@ -46,8 +116,7 @@ begin
      end if
 
      vnames := getfilevarnames(f)
-     htmlrows := new(dimsizes(vnames)+8,string)
-     nrow = 0
+     figbase := new(dimsizes(vnames),string)
      nplotted = 0
      do vv = 0,dimsizes(vnames)-1
         vn = vnames(vv)
@@ -169,14 +238,34 @@ begin
         gsn_panel(wks,plot,(/2,2/),panres)
         delete(wks)
 
-        htmlrows(nrow) = "<tr><td>"+base+"</td><td><a href='mmm."+fprefix+"."+base+".png'><img src='mmm."+fprefix+"."+base+".png' width='600'></a></td></tr>"
-        nrow = nrow+1
+        figbase(nplotted) = base
         nplotted = nplotted+1
         delete([/res,resM,resA,resS,panres/])
      end do
 
      if (nplotted.ge.1) then
+        sections = mmm_fig_sections()
+        keys := new(nplotted,string)          ; order the figures like the index.html tables
+        do kk = 0,nplotted-1                  ; (sections, then diagnostics within a section, then season)
+           keys(kk) = mmm_fig_order(figbase(kk))+"_"+figbase(kk)
+        end do
+        sqsort(keys)
+        htmlrows := new(nplotted+dimsizes(sections),string)
+        nrow = 0
+        cursec = -1
+        do kk = 0,nplotted-1
+           sec = toint(str_get_cols(keys(kk),0,0))
+           base = str_get_cols(keys(kk),7,strlen(keys(kk))-1)
+           if (sec.ne.cursec) then
+              htmlrows(nrow) = "<tr><td colspan='2' style='background-color:#d3d3d3; font-size:14pt'><b>"+sections(sec)+"</b></td></tr>"
+              nrow = nrow+1
+              cursec = sec
+           end if
+           htmlrows(nrow) = "<tr><td>"+base+"</td><td><a href='mmm."+fprefix+"."+base+".png'><img src='mmm."+fprefix+"."+base+".png' width='600'></a></td></tr>"
+           nrow = nrow+1
+        end do
         header = (/"<html><head><title>Multi-model mean: "+expgrp+" minus "+ctlgrp+"</title></head><body>", \
+                   "<p><a href='index.html'>Back to Diagnostics Plots</a></p>", \
                    "<h1>Multi-model mean: "+expgrp+" minus "+ctlgrp+"</h1>", \
                    "<p>Created by the Climate Variability Diagnostics Package v"+VERSION+" (runstyle 3). Data: <a href='"+fprefix+".cvdp_mmm.nc'>"+fprefix+".cvdp_mmm.nc</a></p>", \
                    "<table border='1'>"/)
