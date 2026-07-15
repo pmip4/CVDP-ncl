@@ -19,6 +19,9 @@
   control_group_name   = "piControl"         ; (runstyle=3 only) name of the group (5th namelist column, text after the group number) containing each
                                              ; model's control simulation. Anomalies are computed as experiment minus this group, paired by model (6th column).
   mmm_write_individual = "True"             ; (runstyle=3 only) True = also write per-model regridded anomaly stacks to the multi-model output file.
+  mmm_webpages_only    = "False"             ; (runstyle=3 only) True = do not (re)run the diagnostics, metrics or file consolidation; recompute only the
+                                             ; multi-model statistics and figures and recreate the webpages from the diagnostics output of a previously
+                                             ; completed runstyle 3 run in outdir. False = run the full package (Default).
    
   namelists_only       = "False"             ; Set to True to only create the variable namelists. Useful upon running the package for the first time to 
                                              ; verify that the correct files are being selected by the package. (See files in namelist_byvar/ directory)
@@ -73,6 +76,21 @@
   if (runstyle.le.0.or.runstyle.ge.4) then
      print("runstyle can only be set to 1, 2 or 3. Please alter the runstyle setting and submit again.")
      exit
+  end if
+
+  if (mmm_webpages_only.eq."True") then
+     if (runstyle.ne.3) then
+        print("mmm_webpages_only = True requires runstyle = 3. Please alter the settings and submit again.")
+        exit
+     end if
+     if (namelists_only.eq."True") then
+        print("mmm_webpages_only and namelists_only cannot both be set to True. Please alter the settings and submit again.")
+        exit
+     end if
+     if (ismissing(systemfunc("bash -c 'ls "+outdir+"*.cvdp_data.*.nc 2> /dev/null | head -n 1'"))) then
+        print("mmm_webpages_only = True requires the .cvdp_data.*.nc files of a previously completed runstyle 3 run to be present in outdir ("+outdir+"). None found. Exiting.")
+        exit
+     end if
   end if
 
   if (runstyle.eq.2) then
@@ -136,6 +154,7 @@
      exit
   end if
 
+  if (mmm_webpages_only.ne."True") then      ; mmm_webpages_only reuses the diagnostics output of a previous run
   if (regrid_check.eq."True") then
      print("Checking model input for unstructured data")
      system(envvar_str + " "+str_sub_str(ncl_exec," -Q","")+" "+zp+"data_check_regrid.ncl")
@@ -162,11 +181,12 @@
      complete_list = str_sub_str(complete_list,",",".ncl,")   ; add .ncl in to end of each script name
      complete_list = complete_list+".ncl"                     ; add .ncl in to last script name
      complete_list = str_sub_str(complete_list,","," "+zp)
-     system(envvar_str+" python "+zp+"runTasks.py "+zp+complete_list)		   
+     system(envvar_str+" python "+zp+"runTasks.py "+zp+complete_list)
   end if
 
   system(envvar_str + " "+ncl_exec+" "+zp+"metrics.ncl")
   system(envvar_str + " "+ncl_exec+" "+zp+"ncfiles.append.ncl")
+  end if     ; mmm_webpages_only
   if (runstyle.eq.3) then
      print("Computing multi-model ensemble statistics")
      system(envvar_str + " "+ncl_exec+" "+zp+"multi_model_stats.ncl")
@@ -179,7 +199,12 @@
      if (runstyle.eq.3) then
         system(envvar_str + " "+ncl_exec+" "+zp+"multi_model_graphics.ncl")     ; multi-model mean maps + .mmm.html index page
      end if
-     image_finalize(outdir,output_type,max_num_tasks,zp,toint(144*png_scale),im)    ; trim whitespace, convert to .png (if necessary) and apply watermarks to images
+     if (mmm_webpages_only.eq."True") then   ; only the regenerated multi-model figures need finalizing; the other
+        img_pattern = "mmm.*"                ; images were trimmed/watermarked by the original run
+     else
+        img_pattern = "*"
+     end if
+     image_finalize(outdir,output_type,max_num_tasks,zp,toint(144*png_scale),im,img_pattern)    ; trim whitespace, convert to .png (if necessary) and apply watermarks to images
 
      quote = str_get_dq()
      system("cp namelist_byvar/* "+outdir)
@@ -198,7 +223,9 @@
 
      system("cp "+zp+"cas-cvdp.png "+outdir)
   else
-     system("rm "+outdir+"*.gif")   ; remove metric graphics as images not requested
+     if (mmm_webpages_only.ne."True") then
+        system("rm "+outdir+"*.gif")   ; remove metric graphics as images not requested
+     end if
   end if
 
 ;--------------------------------------------

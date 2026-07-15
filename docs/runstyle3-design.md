@@ -70,7 +70,10 @@ disabled for runstyle 3 — paleo simulations have arbitrary calendars and lengt
 - `driver.ncl` — accepts `runstyle = 3`; new options `control_group_name`,
   `mmm_write_individual`; exports `CONTROL_GROUP`/`MMM_WRITE_INDIV`; forbids rmEM/rmGMST_EM
   for runstyle 3; calls `multi_model_stats.ncl` after `ncfiles.append.ncl`; uses
-  `webpage1.ncl` for runstyle 3.
+  `webpage1.ncl` for runstyle 3. A later addition, `mmm_webpages_only = "True"`, reruns
+  only the multi-model statistics/figures and the webpages from a previously completed
+  run's output (the diagnostics, metrics and consolidation stages are skipped, and
+  `image_finalize` is restricted to the regenerated `mmm.*` figures).
 - `scripts/namelist.ncl` — 6th-column parsing; span-check relaxation; validation
   (exactly one group matches `CONTROL_GROUP`, pairing keys unique per group, warn-and-drop
   unpaired models); writes `namelist_byvar/namelist_pairing`; relabels model rows with

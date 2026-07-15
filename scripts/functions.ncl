@@ -2591,13 +2591,19 @@ end
 ; zp0 = path of CVDP scripts, pngsize = size (in ImageMagick units) of png converted from ps
 ;
 undef("image_finalize")
-procedure image_finalize(odir[1]:string,otype[1]:string,max_nt[1]:integer,zp0[1]:string,pngsize[1]:integer,im_command[1]:string)
-local odir,otype,max_nt,zp0,pngsize,ofiles,ofilesS,ofilesT,gg,filesize,ofiles_png,numPlotsCompleted,numJobsActive,pid,command,im_command
+procedure image_finalize(odir[1]:string,otype[1]:string,max_nt[1]:integer,zp0[1]:string,pngsize[1]:integer,im_command[1]:string,fpattern[1]:string)
+; fpattern selects the images to finalize: "*" = every image in odir (a full run);
+; "mmm.*" = only the multi-model mean figures (driver.ncl mmm_webpages_only mode, where
+; the other images are already trimmed/watermarked and must not be processed twice)
+local odir,otype,max_nt,zp0,pngsize,ofiles,ofilesS,ofilesT,gg,filesize,ofiles_png,numPlotsCompleted,numJobsActive,pid,command,im_command,fpattern
 begin
-  ofiles = systemfunc("ls "+odir+"*."+otype)
+  ofiles = systemfunc("bash -c 'ls "+odir+fpattern+"."+otype+" 2> /dev/null'")
+  if (ismissing(ofiles(0))) then
+     return
+  end if
   if (otype.ne."png") then
-     ofilesS = systemfunc("ls "+outdir+"*."+output_type)
-     ofilesT = systemfunc("ls -l "+outdir+"*."+output_type)
+     ofilesS = systemfunc("ls "+outdir+fpattern+"."+output_type)
+     ofilesT = systemfunc("ls -l "+outdir+fpattern+"."+output_type)
      do gg = 0,dimsizes(ofilesT)-1    ; check for empty .ps files, remove
         filesize =  tofloat(str_get_field(ofilesT(gg),5," "))
         if (filesize.lt.10000) then
@@ -2644,8 +2650,12 @@ begin
   end do
 ;---------------------------------------
 ; Add watermark to metrics graphics
-  
-  ofiles := systemfunc("ls "+odir+"*.gif 2> /dev/null")
+
+  if (fpattern.eq."*") then     ; on a selective finalize (mmm_webpages_only) the metrics
+     ofiles := systemfunc("ls "+odir+"*.gif 2> /dev/null")   ; graphics were not regenerated,
+  else                                                       ; so do not rewatermark them
+     ofiles := new(1,string)
+  end if
   numPlotsCompleted = 0
   numJobsActive = 0
   if (.not.ismissing(ofiles(0))) then
