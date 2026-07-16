@@ -69,7 +69,8 @@
 
   complete_list = "amv,sst.indices,siconc.trends_timeseries,psl.trends_timeseries,pdv,pr.trends_timeseries,"+\
                   "siconc.mean_stddev,soi,nam,nao,sam_psa,pna_npo,amoc,tas.trends_timeseries,ipv,"+\
-                  "sst.mean_stddev,psl.mean_stddev,pr.mean_stddev,sst.trends_timeseries,tas.mean_stddev,zos.mean_stddev,zos.trends"
+                  "sst.mean_stddev,psl.mean_stddev,pr.mean_stddev,sst.trends_timeseries,tas.mean_stddev,zos.mean_stddev,zos.trends,"+\
+                  "amm,atl3,iod"
 
   if (runstyle.le.0.or.runstyle.ge.3) then
      print("runstyle can only be set to 1 or 2. Please alter the runstyle setting and submit again.")
