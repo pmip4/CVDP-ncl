@@ -2870,3 +2870,72 @@ begin
   return(im_command)
 end
 
+;=================================================================================================================
+; Plot an index timeseries with its linear trend line, for the regional/monsoon index scripts
+; (tas.indices.ncl, pr.indices.ncl, monsoon.ncl). Series longer than 150 years are drawn as a
+; 30-sample running mean with a +/- 1 running standard deviation envelope, decimated to one value
+; every five years: plotting every sample of a long monthly series is very slow and unreadable.
+; The plot and the envelope polygon are placed into the caller's plots/envs arrays at index pp:
+; both arrays must stay in scope until gsn_panel is called, or the polygon primitive is destroyed.
+; xvals = x coordinates (same length as ts), nsamp_yr = samples per year (12 = monthly, 1 = annual),
+; envcolor = fill color of the running standard deviation envelope, xyres_in = plot resources.
+;
+undef("plot_index_timeseries")
+procedure plot_index_timeseries(wksp[1]:graphic,xvals[*]:numeric,ts[*]:numeric,nsamp_yr[1]:integer, \
+                                envcolor[1]:string,xyres_in[1]:logical,plots[*]:graphic,envs[*]:graphic,pp[1]:integer)
+local wksp,xvals,ts,nsamp_yr,envcolor,xyres_in,xyres,n,nyears,spanner,trline,vunits,rstring,w,mnv,vav,sdv, \
+      ii,arr,gsres,good,xg,xlocs,ylocs,pp
+begin
+  if (all(ismissing(ts))) then     ; nothing to plot (e.g. an ocean region of a land-only
+     return                        ; dataset); the caller's plots(pp) element stays missing
+  end if                           ; and gsn_panel2 skips it
+  xyres = xyres_in
+  n = dimsizes(ts)
+  nyears = n/nsamp_yr
+  spanner = ispan(0,n-1,1)
+  trline = dtrend_msg(spanner,ts,False,True)
+  vunits = ""
+  if (isatt(ts,"units")) then
+     vunits = ts@units
+  end if
+  rstring = decimalPlaces(trline@slope*n,2,True)+vunits+" "+nyears+"yr~S~-1~N~"
+
+  if (nyears.gt.150) then
+     w = 30                                   ; running mean/standard deviation window (samples)
+     mnv = runave(ts,w,0)
+     vav = runave(ts*ts,w,0) - mnv*mnv        ; running variance via E[x2]-E[x]2 in place of a
+     vav = where(vav.lt.0,0,vav)              ; per-sample loop (guard rounding below zero)
+     sdv = sqrt(vav*(w/(w-1.)))
+     ii = ispan(0,n-1,5*nsamp_yr)             ; one value every 5 years
+     arr = new((/2,dimsizes(ii)/),typeof(ts))
+     arr(0,:) = (/ mnv(ii) /)
+     arr(1,:) = (/ (ii*trline@slope)+trline@y_intercept /)
+     xyres@xyLineColor = "black"
+     if (isatt(xyres,"gsnXYAboveFillColors")) then
+        delete(xyres@gsnXYAboveFillColors)
+     end if
+     if (isatt(xyres,"gsnXYBelowFillColors")) then
+        delete(xyres@gsnXYBelowFillColors)
+     end if
+     xyres@trYMaxF = max(mnv)+1.1*max(sdv)
+     xyres@trYMinF = min(mnv)-1.1*min(sdv)
+     xyres@gsnRightString = rstring
+     plots(pp) = gsn_csm_xy(wksp,tofloat(xvals(ii)),arr,xyres)
+     good = ind(.not.(ismissing(mnv(ii)).or.ismissing(sdv(ii))))   ; envelope polygon over the valid range
+     if (.not.ismissing(good(0))) then
+        xg = tofloat(xvals(ii(good)))
+        xlocs = array_append_record(xg,xg(::-1),0)
+        ylocs = array_append_record(tofloat(mnv(ii(good))-sdv(ii(good))),tofloat(mnv(ii(good(::-1)))+sdv(ii(good(::-1)))),0)
+        gsres = True
+        gsres@gsFillColor = envcolor
+        gsres@tfPolyDrawOrder = "PreDraw"
+        envs(pp) = gsn_add_polygon(wksp,plots(pp),xlocs,ylocs,gsres)
+     end if
+  else
+     arr = new((/2,n/),typeof(ts))
+     arr(0,:) = (/ ts /)
+     arr(1,:) = (/ (spanner*trline@slope)+trline@y_intercept /)
+     xyres@gsnRightString = rstring
+     plots(pp) = gsn_csm_xy(wksp,xvals,arr,xyres)
+  end if
+end
