@@ -594,7 +594,7 @@ begin
      xyres@gsnCenterString = names(ee)
      xyplot(ee) = gsn_csm_xy(wks3,fspan(syear(ee),eyear(ee)+.91667,dimsizes(amm_ts)),amm_ts,xyres)
 
-     delete([/val1,val2,amm_ts,res,pres,xyres/])
+     delete([/amm_ts,res,pres,xyres/])     ; val1/val2 are loop-invariant (set once before the loops)
   end do
 
   panres = True
