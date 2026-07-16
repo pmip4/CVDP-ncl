@@ -175,7 +175,7 @@ begin
      delete([/amm_n,amm_s,ssttemp/])
      amm_ts@AnnCycle=(/wgt_areaave(climo(:,{5.:15.},{-50.:-20.}),coswgt({5.:15.}),1.0,0)-wgt_areaave(climo(:,{-15.:-5.},{-20.:10.}),coswgt({-15.:-5.}),1.0,0)/)
      delete(climo)
-     amm_ts@comment_cvdp = "area average domain (-5:20N, 80W:0E) - (-10:5N, 60W:15E)"
+     amm_ts@comment_cvdp = "area average domain (5:15N, 50:20W) - (15:5S, 20W:10E)"
      amm_ts@units = sst@units
      amm_ts@long_name = "Atlantic Meridional Mode Index (monthly)"
 
