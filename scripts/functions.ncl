@@ -887,10 +887,10 @@ function data_read_in_ice(zpath:string,vn:string,yearS:integer,yearE:integer)
 local zpath,vn,cpath0,ta,tfiles,c,arr,farr,yearS,yearE,mocheck,dimC,lev,opt,farrF
 begin
   if (vn.eq."aice_nh") then
-     vname = (/"aice_nh","aice","sic","siconc","SIC","CN","ice","icec","SEAICE"/)
+     vname = (/"aice_nh","aice","sic","siconc","SIC","CN","ice","icec","SEAICE","siconca"/)
   end if
   if (vn.eq."aice_sh") then
-     vname = (/"aice_sh","aice","sic","siconc","SIC","CN","ice","icec","SEAICE"/)
+     vname = (/"aice_sh","aice","sic","siconc","SIC","CN","ice","icec","SEAICE","siconca"/)
   end if
 
   if (ismissing(zpath) ) then
@@ -1293,19 +1293,125 @@ end
 ;=================================================================================================
 ; Create expanding/contracting links for website
 ;
+undef("mmm_badge_links")
+function mmm_badge_links(ipath:string,iname:string)
+; Given the file name of a Bias (indmemdiff) image from the index.html tables, return
+; badge links to the matching multi-model mean figures (mmm.<experiment group>_minus_
+; <control group>.<diagnostic>.png, created by multi_model_graphics.ncl in runstyle 3),
+; one badge per experiment group (and per field, for figures combining several fields).
+; Returns "" when no multi-model figures match, so runstyles 1 and 2 are unaffected.
+; The index images are named after the diagnostics scripts' plot files while the
+; multi-model figures are named after the cvdp_data variables, so the coupled modes
+; (dot-separated names such as amv.lp.prreg or nino34.spatialcomp.elnino.pr) and the
+; index patterns (no _mon/_ndjfm suffix) need translating.
+local ipath,iname,otxt,quote,dloc,left,season,tokens,nt,stems,labs,comp,fields,tt,ss, \
+      cand,mfils,mm,mname,tag,pairname,mloc,dtable,dstems
+begin
+  otxt = ""
+  quote = str_get_dq()
+  dloc = str_index_of_substr(iname,".indmemdiff.",1)
+  if (ismissing(dloc)) then
+     return(otxt)
+  end if
+  left = str_get_cols(iname,0,dloc-1)
+  season = str_sub_str(str_sub_str(iname,left+".indmemdiff.",""),"png","")   ; "" or e.g. "djf1."
+  season = str_sub_str(season,".","")
+
+  is_comp = False
+  mloc = str_index_of_substr(left,"nino34.spatialcomp",1)
+  if (.not.ismissing(mloc)) then
+     if (mloc.eq.0) then
+        is_comp = True
+     end if
+  end if
+  if (is_comp) then   ; ENSO composites: nino34.spatialcomp[.<elnino|lanina>][.<pr|zos>].indmemdiff.<season>.png
+     comp = "spacomp"
+     fields = (/"sst","tas","psl"/)          ; the base composite figure combines sst, tas and psl
+     tokens = str_split(left,".")
+     nt = dimsizes(tokens)
+     do tt = 2,nt-1
+        if (tokens(tt).eq."elnino".or.tokens(tt).eq."lanina") then
+           comp = tokens(tt)+"_spacomp"
+        else
+           fields := (/tokens(tt)/)
+        end if
+     end do
+     stems = "nino34_"+comp+"_"+fields+"_"+season
+     if (dimsizes(fields).gt.1) then
+        labs = " "+fields
+     else
+        labs = (/""/)
+     end if
+  else
+     dtable = (/"amv","amv.lp","amv.prreg","amv.lp.prreg","amv.tassstreg","amv.lp.tassstreg","amv.zosreg","amv.lp.zosreg", \
+                "pdv","pdv.prreg","pdv.tassstreg","ipv","ipv.prreg","ipv.tassstreg","ipv.zosreg", \
+                "ipv.henley","ipv.henley.prreg","ipv.henley.tassstreg","ipv.henley.zosreg", \
+                "amoc.mean.ann","amoc.pattern.ann","amoc.stddev.ann","amoc.zosreg.ann"/)
+     dstems = (/"amv_pattern_mon","amv_pattern_lowpass_mon","amv_pr_regression_mon","amv_pr_regression_lowpass_mon", \
+                "amv_tas_regression_mon","amv_tas_regression_lowpass_mon","amv_zos_regression_mon","amv_zos_regression_lowpass_mon", \
+                "pdv_pattern_mon","pdv_pr_regression_mon","pdv_tas_regression_mon", \
+                "ipv_pattern_mon","ipv_pr_regression_mon","ipv_tas_regression_mon","ipv_zos_regression_mon", \
+                "ipv_henley_pattern_mon","ipv_henley_pr_regression_mon","ipv_henley_tas_regression_mon","ipv_henley_zos_regression_mon", \
+                "amoc_mean_ann","amoc_pattern_ann","amoc_stddev_ann","amoc_zos_regression_ann"/)
+     if (left.eq."amoc.tassstreg.ann") then   ; the AMOC tas/sst regression figure combines two fields
+        stems = (/"amoc_tas_regression_ann","amoc_sst_regression_ann"/)
+        labs  = (/" tas"," sst"/)
+     else
+        if (num(dtable.eq.left).eq.1) then
+           stems = dstems(ind(dtable.eq.left))
+        else                                  ; plain names: try as-is (e.g. sst_spatialmean_djf), then with a
+           cand = left                        ; season/frequency suffix (nino34_pattern -> nino34_pattern_mon,
+           if (season.ne."") then             ; north_pacific_index_pattern -> ..._ndjfm)
+              cand = cand+"_"+season
+           end if
+           mfils = systemfunc("bash -c 'ls "+ipath+"mmm.*."+cand+".png 2> /dev/null'")
+           if (ismissing(mfils(0))) then
+              stems = cand+"_*"
+           else
+              stems = cand
+           end if
+           delete(mfils)
+        end if
+        labs = (/""/)
+     end if
+  end if
+
+  do ss = 0,dimsizes(stems)-1
+     mfils := systemfunc("bash -c 'ls "+ipath+"mmm.*."+stems(ss)+".png 2> /dev/null'")
+     if (ismissing(mfils(0))) then
+        continue
+     end if
+     do mm = 0,dimsizes(mfils)-1
+        mname = str_sub_str(mfils(mm),ipath,"")                        ; mmm.<exp>_minus_<ctl>.<diagnostic>.png
+        tag = str_get_field(str_sub_str(mname,"mmm.",""),1,".")        ; <exp>_minus_<ctl>
+        pairname = str_sub_str(tag,"_minus_"," minus ")
+        mloc = str_index_of_substr(tag,"_minus_",1)
+        if (.not.ismissing(mloc)) then
+           tag = str_get_cols(tag,0,mloc-1)                            ; label badge with the experiment group name
+        end if
+        otxt = otxt+" <a href="+quote+mname+quote+" class="+quote+"badge badge-success"+quote+" title="+quote+"multi-model mean: "+pairname+quote+">"+tag+labs(ss)+"</a>"
+     end do
+  end do
+  return(otxt)
+end
+
 undef("table_link_setup_le")
 function table_link_setup_le(ipath:string,iname:string,ltxt:string)
-; image name, along with link text
+; image name, along with link text. On the Bias (indmemdiff) call, which is the last
+; badge of each diagnostic cell, badges linking to any multi-model mean figures for the
+; same diagnostic are appended, one per experiment group (see mmm_badge_links).
 local ipath, iname, ltxt, otxt, quote
 begin
   quote = str_get_dq()
   if (isfilepresent2(ipath+iname)) then
-     otxt = "<a href="+quote+iname+quote+" class="+quote+"badge badge-info"+quote+">"+ltxt+"</a>" 
+     otxt = "<a href="+quote+iname+quote+" class="+quote+"badge badge-info"+quote+">"+ltxt+"</a>"
   else
      otxt = ltxt
   end if
+  if (ltxt.eq."Bias") then
+     otxt = otxt+mmm_badge_links(ipath,iname)
+  end if
   return(otxt)
-  delete([/ipath,iname,ltxt,otxt,quote/])
 end
 ;=================================================================================================
 undef ("gsn_panel2")
@@ -1639,6 +1745,11 @@ begin
         end if
      end if
   end if
+  if (isatt(arr_temp,"coordinates").and..not.isatt(arr_temp,"lat2d")) then
+     delete(arr_temp@coordinates)     ; rectilinear data can carry a stray coordinates attribute from the
+  end if                              ; source files (e.g. the CMIP6 "type" scalar coordinate); callers use
+                                      ; the coordinates attribute to detect curvilinear grids, so remove it
+                                      ; whenever no 2d coordinates were attached
   return(arr_temp)
 end
 ;=================================================================================================
@@ -2480,13 +2591,19 @@ end
 ; zp0 = path of CVDP scripts, pngsize = size (in ImageMagick units) of png converted from ps
 ;
 undef("image_finalize")
-procedure image_finalize(odir[1]:string,otype[1]:string,max_nt[1]:integer,zp0[1]:string,pngsize[1]:integer,im_command[1]:string)
-local odir,otype,max_nt,zp0,pngsize,ofiles,ofilesS,ofilesT,gg,filesize,ofiles_png,numPlotsCompleted,numJobsActive,pid,command,im_command
+procedure image_finalize(odir[1]:string,otype[1]:string,max_nt[1]:integer,zp0[1]:string,pngsize[1]:integer,im_command[1]:string,fpattern[1]:string)
+; fpattern selects the images to finalize: "*" = every image in odir (a full run);
+; "mmm.*" = only the multi-model mean figures (driver.ncl mmm_webpages_only mode, where
+; the other images are already trimmed/watermarked and must not be processed twice)
+local odir,otype,max_nt,zp0,pngsize,ofiles,ofilesS,ofilesT,gg,filesize,ofiles_png,numPlotsCompleted,numJobsActive,pid,command,im_command,fpattern
 begin
-  ofiles = systemfunc("ls "+odir+"*."+otype)
+  ofiles = systemfunc("bash -c 'ls "+odir+fpattern+"."+otype+" 2> /dev/null'")
+  if (ismissing(ofiles(0))) then
+     return
+  end if
   if (otype.ne."png") then
-     ofilesS = systemfunc("ls "+outdir+"*."+output_type)
-     ofilesT = systemfunc("ls -l "+outdir+"*."+output_type)
+     ofilesS = systemfunc("ls "+outdir+fpattern+"."+output_type)
+     ofilesT = systemfunc("ls -l "+outdir+fpattern+"."+output_type)
      do gg = 0,dimsizes(ofilesT)-1    ; check for empty .ps files, remove
         filesize =  tofloat(str_get_field(ofilesT(gg),5," "))
         if (filesize.lt.10000) then
@@ -2533,8 +2650,12 @@ begin
   end do
 ;---------------------------------------
 ; Add watermark to metrics graphics
-  
-  ofiles := systemfunc("ls "+odir+"*.gif 2> /dev/null")
+
+  if (fpattern.eq."*") then     ; on a selective finalize (mmm_webpages_only) the metrics
+     ofiles := systemfunc("ls "+odir+"*.gif 2> /dev/null")   ; graphics were not regenerated,
+  else                                                       ; so do not rewatermark them
+     ofiles := new(1,string)
+  end if
   numPlotsCompleted = 0
   numJobsActive = 0
   if (.not.ismissing(ofiles(0))) then
@@ -2588,10 +2709,10 @@ begin
      vname = (/"PRECC","PRECL","PRECT","pr","PPT","ppt","p","P","precip","PRECIP","tp","prcp","prate","prect"/)
   end if
   if (vn.eq."AICE_NH") then
-     vname = (/"aice_nh","aice","sic","siconc","SIC","CN","ice","icec"/)
+     vname = (/"aice_nh","aice","sic","siconc","SIC","CN","ice","icec","siconca"/)
   end if
   if (vn.eq."AICE_SH") then
-     vname = (/"aice_sh","aice","sic","siconc","SIC","CN","ice","icec"/)
+     vname = (/"aice_sh","aice","sic","siconc","SIC","CN","ice","icec","siconca"/)
   end if
   if (vn.eq."SSH") then
      vname = (/"SSH","zos","ssh"/)

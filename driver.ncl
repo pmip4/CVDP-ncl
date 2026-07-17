@@ -3,15 +3,25 @@
 ; to a file named file.out, type: ncl driver.ncl >&! file.out &
 ; 
 ;=====================================================================================================
-  runstyle = 1        ; See online documentation! runstyle 2 requires additional column of data in namelist.
+  runstyle = 1        ; See online documentation! runstyle 2 requires an additional column of data in namelist, runstyle 3 requires two.
                       ; 1 = Individual simulations mode. This is equivalent to running previous versions of the CVDP.
                       ; 2 = Ensemble mode. This is similar to running version 1.0 of the CVDP-LE.
+                      ; 3 = Multi-model ensemble mode. Multiple models running the same experiment(s); each model is paired
+                      ;     with its own control simulation, and multi-model mean/spread/sign-agreement statistics are
+                      ;     computed on a common 1x1 degree grid and written to netCDF.
 
   outdir            = "/project/diag/Comparison1/"   ; Set location of output files   (must end in a "/")
-  webpage_title     = "Webpage title goes here"      ; Set webpage title                                                                
+  webpage_title     = "Webpage title goes here"      ; Set webpage title
   remove_trend_obs  = "QuadraticTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean   (see documentation)
   remove_trend_model= "QuadraticTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean, rmGMST_EM, rmEM  (see documentation)
   ensemble_mean_dir = "/project/cas/CVDP-EM_ncl/"     ; directory where the ensemble means should be located when remove_trend_model = "rmGMST_EM" or "rmEM"
+
+  control_group_name   = "piControl"         ; (runstyle=3 only) name of the group (5th namelist column, text after the group number) containing each
+                                             ; model's control simulation. Anomalies are computed as experiment minus this group, paired by model (6th column).
+  mmm_write_individual = "False"             ; (runstyle=3 only) True = also write per-model regridded anomaly stacks to the multi-model output file.
+  mmm_webpages_only    = "False"             ; (runstyle=3 only) True = do not (re)run the diagnostics, metrics or file consolidation; recompute only the
+                                             ; multi-model statistics and figures and recreate the webpages from the diagnostics output of a previously
+                                             ; completed runstyle 3 run in outdir. False = run the full package (Default).
    
   namelists_only       = "False"             ; Set to True to only create the variable namelists. Useful upon running the package for the first time to 
                                              ; verify that the correct files are being selected by the package. (See files in namelist_byvar/ directory)
@@ -72,17 +82,32 @@
                   "sst.mean_stddev,psl.mean_stddev,pr.mean_stddev,sst.trends_timeseries,tas.mean_stddev,zos.mean_stddev,zos.trends,"+\
                   "amm,atl3,iod"
 
-  if (runstyle.le.0.or.runstyle.ge.3) then
-     print("runstyle can only be set to 1 or 2. Please alter the runstyle setting and submit again.")
+  if (runstyle.le.0.or.runstyle.ge.4) then
+     print("runstyle can only be set to 1, 2 or 3. Please alter the runstyle setting and submit again.")
      exit
   end if
 
-  if (runstyle.eq.1) then
-     olist = (/"None", "LinearTrend","QuadraticTrend", "30yrRunningMean"/)  
-     mlist = (/"None", "LinearTrend","QuadraticTrend", "30yrRunningMean"/)
-  else
-     olist = (/"None", "LinearTrend", "QuadraticTrend", "30yrRunningMean"/)  
+  if (mmm_webpages_only.eq."True") then
+     if (runstyle.ne.3) then
+        print("mmm_webpages_only = True requires runstyle = 3. Please alter the settings and submit again.")
+        exit
+     end if
+     if (namelists_only.eq."True") then
+        print("mmm_webpages_only and namelists_only cannot both be set to True. Please alter the settings and submit again.")
+        exit
+     end if
+     if (ismissing(systemfunc("bash -c 'ls "+outdir+"*.cvdp_data.*.nc 2> /dev/null | head -n 1'"))) then
+        print("mmm_webpages_only = True requires the .cvdp_data.*.nc files of a previously completed runstyle 3 run to be present in outdir ("+outdir+"). None found. Exiting.")
+        exit
+     end if
+  end if
+
+  if (runstyle.eq.2) then
+     olist = (/"None", "LinearTrend", "QuadraticTrend", "30yrRunningMean"/)
      mlist = (/"None", "LinearTrend", "QuadraticTrend", "30yrRunningMean", "rmGMST_EM", "rmEM"/)
+  else                 ; runstyles 1 and 3: rmGMST_EM/rmEM not permitted (for runstyle 3 the members are on different grids)
+     olist = (/"None", "LinearTrend","QuadraticTrend", "30yrRunningMean"/)
+     mlist = (/"None", "LinearTrend","QuadraticTrend", "30yrRunningMean"/)
   end if
   if (.not.any(olist.eq.remove_trend_obs)) then
      print("Valid options for remove_trend_obs for runstyle = "+runstyle+" are:  "+str_join(olist,", ")+". Reset remove_trend_obs and submit again.")
@@ -119,7 +144,10 @@
          "export OPT_CLIMO="+opt_climo+";   export CLIMO_SYEAR="+climo_syear+";   export CLIMO_EYEAR="+climo_eyear+";   "+\
          "export MAX_TASKS="+max_num_tasks+";   export IM_COMMAND="+im+";"
   if (regrid_check.eq."True") then
-     envvar_str = envvar_str+"   export REGRID_TO_RES="+regrid_to_res+";   export REGRID_DIR="+regrid_dir+";"     
+     envvar_str = envvar_str+"   export REGRID_TO_RES="+regrid_to_res+";   export REGRID_DIR="+regrid_dir+";"
+  end if
+  if (runstyle.eq.3) then
+     envvar_str = envvar_str+"   export CONTROL_GROUP="+control_group_name+";   export MMM_WRITE_INDIV="+mmm_write_individual+";"
   end if
   ncl_exec = ncl_exec+" -n -Q" 
 
@@ -136,6 +164,7 @@
      exit
   end if
 
+  if (mmm_webpages_only.ne."True") then      ; mmm_webpages_only reuses the diagnostics output of a previous run
   if (regrid_check.eq."True") then
      print("Checking model input for unstructured data")
      system(envvar_str + " "+str_sub_str(ncl_exec," -Q","")+" "+zp+"data_check_regrid.ncl")
@@ -162,17 +191,30 @@
      complete_list = str_sub_str(complete_list,",",".ncl,")   ; add .ncl in to end of each script name
      complete_list = complete_list+".ncl"                     ; add .ncl in to last script name
      complete_list = str_sub_str(complete_list,","," "+zp)
-     system(envvar_str+" python "+zp+"runTasks.py "+zp+complete_list)		   
+     system(envvar_str+" python "+zp+"runTasks.py "+zp+complete_list)
   end if
 
   system(envvar_str + " "+ncl_exec+" "+zp+"metrics.ncl")
   system(envvar_str + " "+ncl_exec+" "+zp+"ncfiles.append.ncl")
+  end if     ; mmm_webpages_only
+  if (runstyle.eq.3) then
+     print("Computing multi-model ensemble statistics")
+     system(envvar_str + " "+ncl_exec+" "+zp+"multi_model_stats.ncl")
+  end if
 ;--------------------------------------------
 ; Create webpages, finalize images and begin cleanup
 ;
   if (create_graphics.eq."True") then
      print("Creating webpages and finalizing images")
-     image_finalize(outdir,output_type,max_num_tasks,zp,toint(144*png_scale),im)    ; trim whitespace, convert to .png (if necessary) and apply watermarks to images
+     if (runstyle.eq.3) then
+        system(envvar_str + " "+ncl_exec+" "+zp+"multi_model_graphics.ncl")     ; multi-model mean maps + .mmm.html index page
+     end if
+     if (mmm_webpages_only.eq."True") then   ; only the regenerated multi-model figures need finalizing; the other
+        img_pattern = "mmm.*"                ; images were trimmed/watermarked by the original run
+     else
+        img_pattern = "*"
+     end if
+     image_finalize(outdir,output_type,max_num_tasks,zp,toint(144*png_scale),im,img_pattern)    ; trim whitespace, convert to .png (if necessary) and apply watermarks to images
 
      quote = str_get_dq()
      system("cp namelist_byvar/* "+outdir)
@@ -181,13 +223,19 @@
         system("cp namelist_obs "+outdir)
      end if
 
+     wps = runstyle       ; runstyle 3 diagnostics run in individual simulation mode, so the runstyle 1 webpage applies
+     if (runstyle.eq.3) then
+        wps = 1
+     end if
      system("   export OUTDIR="+outdir+";   export VERSION="+version+";   "+\
             "export REMOVE_TREND_OBS="+remove_trend_obs+";   export REMOVE_TREND_MODEL="+remove_trend_model+";   "+\
-            "export OBS="+obs+";   export CVDP_SCRIPTS="+zp+"; "+ncl_exec+" 'webtitle="+quote+webpage_title+quote+"' "+zp+"webpage"+runstyle+".ncl")
+            "export OBS="+obs+";   export CVDP_SCRIPTS="+zp+"; "+ncl_exec+" 'webtitle="+quote+webpage_title+quote+"' "+zp+"webpage"+wps+".ncl")
 
      system("cp "+zp+"cas-cvdp.png "+outdir)
   else
-     system("rm "+outdir+"*.gif")   ; remove metric graphics as images not requested
+     if (mmm_webpages_only.ne."True") then
+        system("rm "+outdir+"*.gif")   ; remove metric graphics as images not requested
+     end if
   end if
 
 ;--------------------------------------------

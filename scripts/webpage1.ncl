@@ -193,11 +193,34 @@ begin
   end if
 
 
-		txt(49) = "<li class="+quote+"list-inline-item"+quote+">Namelists: <a href="+quote+"namelist_obs.html"+quote+">Input</a> | <a href="+quote+"namelist_msftmz.html"+quote+">Derived</a></li>"		
+		txt(49) = "<li class="+quote+"list-inline-item"+quote+">Namelists: <a href="+quote+"namelist_obs.html"+quote+">Input</a> | <a href="+quote+"namelist_msftmz.html"+quote+">Derived</a></li>"
+
+  mmmpages = systemfunc("bash -c 'ls "+OUTDIR+"*.mmm.html 2> /dev/null'")   ; created by multi_model_graphics.ncl (runstyle 3)
+  if (.not.ismissing(mmmpages(0))) then
+     mmmtxt = "<br><li class="+quote+"list-inline-item"+quote+">Multi-Model Means: "
+     do gg = 0,dimsizes(mmmpages)-1
+        mmmname = str_sub_str(mmmpages(gg),OUTDIR,"")
+        mmmtag = str_sub_str(mmmname,".mmm.html","")
+        mloc = str_index_of_substr(mmmtag,"_minus_",1)
+        if (.not.ismissing(mloc)) then
+           mmmtag = str_get_cols(mmmtag,0,mloc-1)     ; label the link with the experiment group name
+        end if
+        if (gg.ge.1) then
+           mmmtxt = mmmtxt+" | "
+        end if
+        mmmtxt = mmmtxt+"<a href="+quote+mmmname+quote+">"+mmmtag+"</a>"
+     end do
+     txt(50) = mmmtxt+"</li>"
+  end if
+
 		txt(65) = "<li class="+quote+"list-inline-item"+quote+">Created: "+systemfunc("date")+"<br>CVDP Version "+VERSION+"<br>"
   txt(66) = "Trend Removal: <div class="+quote+"popup"+quote+" onclick="+quote+"myFunction(event)"+quote+">Reference<span class="+quote+"popuptext"+quote+" id="+quote+"myPopup"+quote+">"+rt_obs+"<br> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<i>Click link to close</i></span></div> |"
   txt(67) = "<div class="+quote+"popup"+quote+" onclick="+quote+"myFunction(event)"+quote+">Simulations<span class="+quote+"popuptext"+quote+" id="+quote+"myPopup"+quote+">"+rt_model+"<br> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<i>Click link to close</i></span></div></li>"
-  txt(68) = "<p class=btext2>Individual Member Mode</p>"
+  if (.not.ismissing(mmmpages(0))) then
+     txt(68) = "<p class=btext2>Multi-Model Ensemble Mode</p>"
+  else
+     txt(68) = "<p class=btext2>Individual Member Mode</p>"
+  end if
 		txt(70) = "</ul></td>"
 		txt(83) = "</tr>"
 		txt(84) = "</table>"
@@ -2855,17 +2878,17 @@ begin
   txt(5751) = "<td colspan=2>"+table_link_setup(OUTDIR,"amoc_amv.leadlag.ann.indmem.png","AMV/AMOC Lag Correlations")+"</td></tr>"
 
   txt(5755) = "<tr><td><b>AMM</b></td>"     ; amm.ncl/atl3.ncl/iod.ncl create single paneled figures (all simulations
-  txt(5756) = "<td>Regr: "+table_link_setup(OUTDIR,"amm.png","SST")+" "+table_link_setup(OUTDIR,"amm.tasreg.png","TAS")+" "+table_link_setup(OUTDIR,"amm.prreg.png","PR")+"</td>"     ; and reference datasets together), so plain links are used
+  txt(5756) = "<td>Regr: "+table_link_setup(OUTDIR,"amm.png","SST")+mmm_badge_links(OUTDIR,"amm_pattern_mon.indmemdiff.png")+" "+table_link_setup(OUTDIR,"amm.tasreg.png","TAS")+mmm_badge_links(OUTDIR,"amm_tas_regression_mon.indmemdiff.png")+" "+table_link_setup(OUTDIR,"amm.prreg.png","PR")+mmm_badge_links(OUTDIR,"amm_pr_regression_mon.indmemdiff.png")+"</td>"     ; and reference datasets together), so plain links are used
   txt(5757) = "<td>"+table_link_setup(OUTDIR,"amm.timeseries.png","Timeseries")+"</td>"
   txt(5758) = "<td>"+table_link_setup(OUTDIR,"amm.powspec.png","Power Spectra")+"</td></tr>"
 
   txt(5765) = "<tr><td><b>ATL3</b></td>"
-  txt(5766) = "<td>Regr: "+table_link_setup(OUTDIR,"atl3.png","SST")+" "+table_link_setup(OUTDIR,"atl3.tasreg.png","TAS")+" "+table_link_setup(OUTDIR,"atl3.prreg.png","PR")+"</td>"
+  txt(5766) = "<td>Regr: "+table_link_setup(OUTDIR,"atl3.png","SST")+mmm_badge_links(OUTDIR,"atl3_pattern_mon.indmemdiff.png")+" "+table_link_setup(OUTDIR,"atl3.tasreg.png","TAS")+mmm_badge_links(OUTDIR,"atl3_tas_regression_mon.indmemdiff.png")+" "+table_link_setup(OUTDIR,"atl3.prreg.png","PR")+mmm_badge_links(OUTDIR,"atl3_pr_regression_mon.indmemdiff.png")+"</td>"
   txt(5767) = "<td>"+table_link_setup(OUTDIR,"atl3.timeseries.png","Timeseries")+"</td>"
   txt(5768) = "<td>"+table_link_setup(OUTDIR,"atl3.powspec.png","Power Spectra")+"</td></tr>"
 
   txt(5775) = "<tr><td><b>IOD</b></td>"
-  txt(5776) = "<td>Regr: "+table_link_setup(OUTDIR,"iod.png","SST")+" "+table_link_setup(OUTDIR,"iod.tasreg.png","TAS")+" "+table_link_setup(OUTDIR,"iod.prreg.png","PR")+"</td>"
+  txt(5776) = "<td>Regr: "+table_link_setup(OUTDIR,"iod.png","SST")+mmm_badge_links(OUTDIR,"iod_pattern_mon.indmemdiff.png")+" "+table_link_setup(OUTDIR,"iod.tasreg.png","TAS")+mmm_badge_links(OUTDIR,"iod_tas_regression_mon.indmemdiff.png")+" "+table_link_setup(OUTDIR,"iod.prreg.png","PR")+mmm_badge_links(OUTDIR,"iod_pr_regression_mon.indmemdiff.png")+"</td>"
   txt(5777) = "<td>"+table_link_setup(OUTDIR,"iod.timeseries.png","Timeseries")+"</td>"
   txt(5778) = "<td>"+table_link_setup(OUTDIR,"iod.powspec.png","Power Spectra")+"</td></tr>"
 

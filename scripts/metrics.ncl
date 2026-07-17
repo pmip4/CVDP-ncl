@@ -645,7 +645,7 @@ begin
   end do
   delete(testdim) 
   
-  if (RUNSTYLE.ne."1") then
+  if (RUNSTYLE.eq."2") then     ; runstyle 3 diagnostics run in individual simulation mode, so no ensemble mean metrics exist
      header = (/"","Pattern Correlations/RMS Differences   Reference Dataset 1 vs. Ensemble Means",""/)
      write_table(OUTDIR+"metrics_EM.txt","w",[/header/],"%s")
 
