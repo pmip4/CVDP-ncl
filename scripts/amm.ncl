@@ -703,6 +703,34 @@ begin
   panres@txString = "AMM (Monthly)"
   gsn_panel2(wks3,xyplot,lp,panres)
   delete(wks3)
+
+  if (nEM.ge.1) then     ; runstyle 2: ensemble summary figures (EM / reference / difference / rank)
+     if (COLORMAP.eq."0") then
+        patlev := fspan(-.65,.65,27)
+        patpal = "ncl_default"
+        prlev := (/-5.,-4,-3,-2,-1,-.75,-.5,-.25,-.1,0,.1,.25,.5,.75,1,2,3,4,5/)
+        prpal = "MPL_BrBG"
+     else
+        patlev := fspan(-.8,.8,17)
+        patpal = "BlueDarkRed18"
+        prlev := (/-3.,-2,-1,-.5,-.1,0,.1,.5,1,2,3/)
+        prpal = "BrownBlue12"
+     end if
+     ensemble_summary_figure("amm_pattern_mon","amm.", \
+            OUTDIR+modname+".cvdp_data.amm."+syear+"-"+eyear+".nc", \
+            OUTDIR+modname+".cvdp_data."+syear+"-"+eyear+".nc", \
+            names,syear,eyear,paths,names_EM,EM_num,nEM,patlev,patpal,patlev,patpal,"AMM Pattern (Monthly)",wks_type)
+     ensemble_summary_figure("amm_tas_regression_mon","amm.tas.", \
+            OUTDIR+modname_tas+".cvdp_data.amm.tas."+syear_tas+"-"+eyear_tas+".nc", \
+            OUTDIR+modname_tas+".cvdp_data."+syear_tas+"-"+eyear_tas+".nc", \
+            names_tas,syear_tas,eyear_tas,paths_tas,names_EM,EM_num,nEM,patlev,patpal,patlev,patpal,"AMM TAS Regression (Monthly)",wks_type)
+     ensemble_summary_figure("amm_pr_regression_mon","amm.pr.", \
+            OUTDIR+modname_pr+".cvdp_data.amm.pr."+syear_pr+"-"+eyear_pr+".nc", \
+            OUTDIR+modname_pr+".cvdp_data."+syear_pr+"-"+eyear_pr+".nc", \
+            names_pr,syear_pr,eyear_pr,paths_pr,names_EM,EM_num,nEM,prlev,prpal,prlev,prpal,"AMM PR Regression (Monthly)",wks_type)
+     delete([/patlev,prlev/])
+  end if
+
   delete([/map,pspec,syear,eyear,nyr,nyr_max,lp/])
 ;--------------------------------------------------------------------------------------------------
   if (wks_type.eq."png") then

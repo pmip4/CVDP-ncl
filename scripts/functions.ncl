@@ -2990,3 +2990,192 @@ begin
   em@nens_em = cnt
   return(em)
 end
+;=================================================================================================================
+; Create the runstyle 2 "Ensemble Summary" figure <vn>.summary.<png/ps> for a lat x lon diagnostic,
+; following the core CVDP convention (cf. pr.mean_stddev.ncl): one row of four panels per ensemble -
+; the ensemble mean (EM, annotated with its pattern correlation against the reference dataset), the
+; reference dataset, EM minus reference, and the rank of the reference within the ensemble. The
+; difference and rank fields are also written to the ensemble's _EM.cvdp_data.<emprefix><years>.nc
+; file as <vn>_em_diffobs and <vn>_pval. Used by the amm/atl3/iod/monsoon scripts.
+;   vn           = variable name in the cvdp_data files (also used for the figure name)
+;   emprefix     = script part of the _EM intermediate file name (e.g. "amm." or "amm.tas.")
+;   fnts/fnts2   = per-simulation intermediate/master files; row 0 must be the reference dataset
+;   namesv/syearv/eyearv/pathsv/names_EMv/EM_numv/nEMv = the usual namelist metadata arrays
+;   cnlev/cnpal  = contour levels/fill palette of the EM and reference panels
+;   cnlev2/cnpal2 = contour levels/fill palette of the difference panel
+;   ftitle       = figure title ("Ensemble Summary: <ftitle>")
+;   wtype        = workstation type (gsn_open_wks first argument)
+;
+undef("ensemble_summary_figure")
+procedure ensemble_summary_figure(vn[1]:string,emprefix[1]:string,fnts[*]:string,fnts2[*]:string, \
+                                  namesv[*]:string,syearv[*]:integer,eyearv[*]:integer,pathsv[*]:string, \
+                                  names_EMv[*]:string,EM_numv[*]:integer,nEMv[1]:integer, \
+                                  cnlev[*]:numeric,cnpal[1]:string,cnlev2[*]:numeric,cnpal2[1]:string, \
+                                  ftitle[1]:string,wtype[1]:string)
+local vn,emprefix,fnts,fnts2,namesv,syearv,eyearv,pathsv,names_EMv,EM_numv,nEMv,cnlev,cnpal,cnlev2,cnpal2, \
+      ftitle,wtype,OUTDIR,obs0,wks_s,plot_summary,csub,qres,qres2,tres,panres2,cntr_EM,gg,emi,nens,le,cnt,hh, \
+      arr,arr_store,arr_EM,obs0_rg,obs_diff,p_val,lbFlag,ename,fno,z,vno
+begin
+  OUTDIR = getenv("OUTDIR")
+  oidx = -1                                  ; use the first reference dataset (EM number 0) that
+  do hh = 0,dimsizes(fnts)-1                 ; holds the variable (the first row may be a dataset
+     if (EM_numv(hh).ne.0) then              ; whose input file was unavailable)
+        continue
+     end if
+     obs0 := read_cvdp_le_data(fnts(hh),fnts2(hh),vn)
+     if (.not.isatt(obs0,"is_all_missing")) then
+        oidx = hh
+        break
+     end if
+  end do
+  if (oidx.lt.0) then
+     print("ensemble_summary_figure: no reference dataset contains "+vn+", no summary figure created")
+     return
+  end if
+  wks_s = gsn_open_wks(wtype,OUTDIR+vn+".summary")
+  plot_summary = new(nEMv*4,"graphic")
+  csub = set_subtitle_colors(nEMv)
+
+  qres = True                                ; EM / reference panel resource list
+  qres@mpProjection = "WinkelTripel"
+  qres@mpGeophysicalLineColor = "gray42"
+  qres@mpPerimOn    = False
+  qres@mpGridLatSpacingF =  90
+  qres@mpGridLonSpacingF = 180.
+  qres@mpGridLineColor   = "transparent"
+  qres@mpGridAndLimbOn   = True
+  qres@mpFillOn = False
+  qres@mpCenterLonF = 210.
+  qres@mpOutlineOn = True
+  qres@gsnDraw      = False
+  qres@gsnFrame     = False
+  qres@cnLineLabelsOn = False
+  qres@cnFillOn        = True
+  qres@cnLinesOn       = False
+  qres@cnInfoLabelOn = False
+  qres@lbLabelBarOn = False
+  qres@lbLabelFontHeightF = 0.014
+  qres@lbTitleFontHeightF = qres@lbLabelFontHeightF
+  qres@lbTitlePosition = "Bottom"
+  qres@cnNoDataLabelOn = False
+  qres@cnLevelSelectionMode = "ExplicitLevels"
+  qres@gsnLeftStringOrthogonalPosF = -0.05
+  qres@gsnLeftStringParallelPosF = .005
+  qres@gsnRightStringOrthogonalPosF = -0.05
+  qres@gsnRightStringParallelPosF = 0.96
+  qres@gsnLeftStringFontHeightF = 0.014
+  qres@gsnCenterStringFontHeightF = 0.018
+  qres@gsnRightStringFontHeightF = 0.014
+  qres@gsnRightString = ""
+  qres@gsnLeftString = ""
+
+  tres = qres                                ; rank (p-value) panel resource list
+  copy_VarAtts(retrieve_summary_res(),tres)
+
+  qres@cnLevels = cnlev
+  qres@cnFillPalette = cnpal
+  qres2 = qres                               ; difference panel resource list
+  qres2@cnLevels := cnlev2
+  qres2@cnFillPalette := cnpal2
+
+  panres2 = True
+  panres2@gsnFrame = False
+  panres2@gsnMaximize = False
+  panres2@gsnPaperOrientation = "portrait"
+  panres2@gsnPanelLabelBar = False
+  panres2@gsnPanelYWhiteSpacePercent = 3.0
+  panres2@pmLabelBarHeightF = 0.05
+  panres2@pmLabelBarWidthF = 0.65
+  panres2@pmLabelBarOrthogonalPosF = -0.02
+  panres2@lbBoxLineColor = "gray70"
+  panres2@txFontHeightF = 0.016
+  panres2@gsnPanelBottom = 0.05
+  panres2@lbLabelFontHeightF = 0.013
+  panres2@lbLabelStride = 1
+  panres2@lbTitleOn = False
+  panres2@txString = "Ensemble Summary: "+ftitle
+
+  cntr_EM = 0
+  do gg = 1,nEMv
+     emi := ind(EM_numv.eq.gg)
+     nens = dimsizes(emi)
+     le = nens-1
+     cnt = 0
+     do hh = 0,nens-1
+        arr := read_cvdp_le_data(fnts(emi(hh)),fnts2(emi(hh)),vn)
+        if (isatt(arr,"is_all_missing")) then
+           continue
+        end if
+        if (cnt.eq.0) then
+           arr_store := new((/nens,dimsizes(arr&lat),dimsizes(arr&lon)/),typeof(arr))
+           arr_store!0 = "ensmem"
+           arr_store!1 = "lat"
+           arr_store&lat = arr&lat
+           arr_store!2 = "lon"
+           arr_store&lon = arr&lon
+           copy_VarAtts(arr,arr_store)
+        end if
+        arr_store(hh,:,:) = (/ arr /)
+        cnt = cnt+1
+     end do
+     if (cnt.eq.0) then
+        cntr_EM = cntr_EM+4
+        continue
+     end if
+     arr_EM = dim_avg_n_Wrap(arr_store,0)
+     obs0_rg := linint2_Wrap(obs0&lon,obs0&lat,obs0,True,arr_EM&lon,arr_EM&lat,0)
+
+     lbFlag = summary_lb_flag(pathsv,EM_numv,gg,nEMv)
+     qres@lbLabelBarOn = lbFlag
+     qres2@lbLabelBarOn = lbFlag
+     tres@lbLabelBarOn = lbFlag
+     qres@lbTitleString = arr_EM@units
+     qres2@lbTitleString = qres@lbTitleString
+
+     qres@gsnCenterStringFontColor = "black"
+     qres@gsnLeftString = syearv(oidx)+"-"+eyearv(oidx)
+     qres@gsnRightString = ""
+     qres@gsnCenterString = namesv(oidx)
+     plot_summary(cntr_EM+1) = gsn_csm_contour_map(wks_s,obs0,qres)
+
+     qres@gsnCenterStringFontColor = csub(gg-1)
+     qres@gsnLeftString = syearv(emi(le))+"-"+eyearv(emi(le))
+     qres@gsnRightString = "r="+pattern_correlation(obs0_rg,arr_EM)
+     qres@gsnCenterString = names_EMv(emi(0))+" ("+cnt+" Members)"
+     plot_summary(cntr_EM) = gsn_csm_contour_map(wks_s,arr_EM,qres)
+
+     obs_diff = arr_EM
+     obs_diff = (/ arr_EM - obs0_rg /)
+     qres2@gsnCenterStringFontColor = "black"
+     qres2@gsnLeftString = ""
+     qres2@gsnCenterString = names_EMv(emi(0))+" - "+namesv(oidx)
+     qres2@gsnRightString = arr_EM@units
+     plot_summary(cntr_EM+2) = gsn_csm_contour_map(wks_s,obs_diff,qres2)
+
+     p_val = calculate_pval(obs0_rg,arr_store)
+     tres@gsnCenterString = "Rank of "+namesv(oidx)+" within Ensemble"
+     tres@gsnRightString = calculate_area_in_range(p_val,10,90)+"%"
+     plot_summary(cntr_EM+3) = gsn_csm_contour_map(wks_s,p_val,tres)
+
+     ename = str_sub_str(names_EMv(emi(0))," ","_")
+     fno = OUTDIR+ename+"_EM.cvdp_data."+emprefix+syearv(emi(le))+"-"+eyearv(emi(le))+".nc"
+     if (isfilepresent2(fno)) then
+        z = addfile(fno,"w")
+     else
+        z = addfile(fno,"c")
+        set_global_ncfile_attributes(z,names_EMv(emi(0)),syearv(emi(le)),eyearv(emi(le)),getenv("VERSION"))
+     end if
+     vno = vn+"_em_diffobs"
+     z->$vno$ = set_varAtts(obs_diff,arr_EM@long_name+" Ensemble Mean difference from "+namesv(oidx),"","")
+     vno = vn+"_pval"
+     z->$vno$ = set_varAtts(p_val,arr_EM@long_name+" p-val statistic","%","")
+     delete([/p_val,arr_EM,obs_diff,z/])
+     cntr_EM = cntr_EM+4
+  end do
+  gsn_panel2(wks_s,plot_summary,(/nEMv,4/),panres2)
+  frame(wks_s)
+  delete(wks_s)
+  if (getenv("OUTPUT_TYPE").eq."png") then
+     system(getenv("IM_COMMAND")+" "+OUTDIR+vn+".summary.png -resize "+getenv("PNG_SCALE_SUMMARY")+"% "+OUTDIR+vn+".summary.png")
+  end if
+end

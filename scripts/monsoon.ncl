@@ -404,6 +404,23 @@ begin
   gsn_panel2(wks_domain,map_domains,(/nrow,ncol/),panres)
   delete([/wks_domain,map_domains,panres,res/])
 
+  if (nEM.ge.1) then     ; runstyle 2: ensemble summary figure (EM / reference / difference / rank)
+     domlev := (/0.5,1,2,3,4,5,6,7,8,9,10,12,14,16,18/)
+     if (COLORMAP.eq."0") then
+        dompal = "precip3_16lev"
+        domdifpal = "MPL_RdYlGn"
+     else
+        dompal = "BlueDarkRed18"
+        domdifpal = "BlueDarkRed18"
+     end if
+     domdiflev := (/-8.,-6,-4,-2,-1,-0.5,0.,0.5,1,2,4,6,8/)
+     ensemble_summary_figure("monsoon_domain","monsoon.", \
+            OUTDIR+modname+".cvdp_data.monsoon."+syear+"-"+eyear+".nc", \
+            OUTDIR+modname+".cvdp_data."+syear+"-"+eyear+".nc", \
+            names,syear,eyear,paths,names_EM,EM_num,nEM,domlev,dompal,domdiflev,domdifpal,"Global Monsoon Rainfall",wks_type)
+     delete([/domlev,domdiflev/])
+  end if
+
 ;;;;Now plot the timeseries: one figure per (rain rate | area) x (global + each domain)
   xyres = True
   xyres@gsnDraw = False
