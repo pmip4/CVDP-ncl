@@ -2939,3 +2939,54 @@ begin
      plots(pp) = gsn_csm_xy(wksp,xvals,arr,xyres)
   end if
 end
+;=================================================================================================================
+; Read a variable from every member of an ensemble (via read_cvdp_le_data, so either the
+; script's own intermediate files or the consolidated cvdp_data masters are used) and return
+; the ensemble mean. Used by the regional index/monsoon/tropical mode scripts to create
+; ensemble mean outputs in runstyle 2; all members of a (single model) ensemble share their
+; grid and, after namelist.ncl's span equalization, their timeseries length. Handles rank 1
+; and rank 2 variables. An AnnCycle attribute, if present, is also averaged across members.
+; Returns a variable with @is_all_missing = True when no member holds the variable; otherwise
+; @nens_em records the number of contributing members.
+;
+undef("read_ensemble_mean")
+function read_ensemble_mean(fnts[*]:string,fnts2[*]:string,vn:string)
+local fnts,fnts2,vn,nens,cnt,hh,arr,dsz,store,anncyc,em,ret
+begin
+  nens = dimsizes(fnts)
+  cnt = 0
+  do hh = 0,nens-1
+     arr := read_cvdp_le_data(fnts(hh),fnts2(hh),vn)
+     if (isatt(arr,"is_all_missing")) then
+        continue
+     end if
+     if (cnt.eq.0) then
+        dsz = dimsizes(arr)
+        store = new(array_append_record(nens,dsz,0),typeof(arr))
+        em = arr                                ; template: keeps coordinates and attributes
+        if (isatt(arr,"AnnCycle")) then
+           anncyc = new((/nens,dimsizes(arr@AnnCycle)/),typeof(arr@AnnCycle))
+        end if
+     end if
+     if (dimsizes(dsz).eq.1) then
+        store(cnt,:) = (/ arr /)
+     else
+        store(cnt,:,:) = (/ arr /)
+     end if
+     if (isvar("anncyc").and.isatt(arr,"AnnCycle")) then
+        anncyc(cnt,:) = (/ arr@AnnCycle /)
+     end if
+     cnt = cnt+1
+  end do
+  if (cnt.eq.0) then
+     ret = new(1,float)
+     ret@is_all_missing = True
+     return(ret)
+  end if
+  em = (/ dim_avg_n(store,0) /)                 ; rows beyond cnt are all missing and are ignored
+  if (isvar("anncyc")) then
+     em@AnnCycle = dim_avg_n(anncyc,0)
+  end if
+  em@nens_em = cnt
+  return(em)
+end

@@ -329,6 +329,60 @@ begin
      delete([/z,amm,amm_ts,jave/])
   end do
 
+  if (nEM.ge.1) then     ; runstyle 2: create ensemble mean outputs from the member files
+     do gg = 1,nEM
+        emi := ind(EM_num.eq.gg)
+        le = dimsizes(emi)-1
+        ename = str_sub_str(names_EM(emi(0))," ","_")
+        fnts := OUTDIR+modname(emi)+".cvdp_data.amm."+syear(emi)+"-"+eyear(emi)+".nc"
+        fnts2 := OUTDIR+modname(emi)+".cvdp_data."+syear(emi)+"-"+eyear(emi)+".nc"
+        em := read_ensemble_mean(fnts,fnts2,"amm_pattern_mon")
+        if (.not.isatt(em,"is_all_missing")) then
+           fno = OUTDIR+ename+"_EM.cvdp_data.amm."+syear(emi(le))+"-"+eyear(emi(le))+".nc"
+           if (isfilepresent2(fno)) then
+              z = addfile(fno,"w")
+           else
+              z = addfile(fno,"c")
+              set_global_ncfile_attributes(z,names_EM(emi(0)),syear(emi(le)),eyear(emi(le)),getenv("VERSION"))
+           end if
+           z->amm_pattern_mon_em = set_varAtts(em,"AMM spatial pattern (monthly) Ensemble Mean","","")
+           em := read_ensemble_mean(fnts,fnts2,"amm_spectra")
+           if (.not.isatt(em,"is_all_missing")) then
+              z->amm_spectra_em = set_varAtts(em,"AMM (monthly) power spectra Ensemble Mean","","")
+           end if
+           delete(z)
+        end if
+        fnts := OUTDIR+modname_tas(emi)+".cvdp_data.amm.tas."+syear_tas(emi)+"-"+eyear_tas(emi)+".nc"
+        fnts2 := OUTDIR+modname_tas(emi)+".cvdp_data."+syear_tas(emi)+"-"+eyear_tas(emi)+".nc"
+        em := read_ensemble_mean(fnts,fnts2,"amm_tas_regression_mon")
+        if (.not.isatt(em,"is_all_missing")) then
+           fno = OUTDIR+ename+"_EM.cvdp_data.amm.tas."+syear_tas(emi(le))+"-"+eyear_tas(emi(le))+".nc"
+           if (isfilepresent2(fno)) then
+              z = addfile(fno,"w")
+           else
+              z = addfile(fno,"c")
+              set_global_ncfile_attributes(z,names_EM(emi(0)),syear_tas(emi(le)),eyear_tas(emi(le)),getenv("VERSION"))
+           end if
+           z->amm_tas_regression_mon_em = set_varAtts(em,"tas regression onto AMM timeseries (monthly) Ensemble Mean","","")
+           delete(z)
+        end if
+        fnts := OUTDIR+modname_pr(emi)+".cvdp_data.amm.pr."+syear_pr(emi)+"-"+eyear_pr(emi)+".nc"
+        fnts2 := OUTDIR+modname_pr(emi)+".cvdp_data."+syear_pr(emi)+"-"+eyear_pr(emi)+".nc"
+        em := read_ensemble_mean(fnts,fnts2,"amm_pr_regression_mon")
+        if (.not.isatt(em,"is_all_missing")) then
+           fno = OUTDIR+ename+"_EM.cvdp_data.amm.pr."+syear_pr(emi(le))+"-"+eyear_pr(emi(le))+".nc"
+           if (isfilepresent2(fno)) then
+              z = addfile(fno,"w")
+           else
+              z = addfile(fno,"c")
+              set_global_ncfile_attributes(z,names_EM(emi(0)),syear_pr(emi(le)),eyear_pr(emi(le)),getenv("VERSION"))
+           end if
+           z->amm_pr_regression_mon_em = set_varAtts(em,"pr regression onto AMM timeseries (monthly) Ensemble Mean","","")
+           delete(z)
+        end if
+     end do
+  end if
+
   if (CREATE_GRAPHICS.eq."False") then
      print("Finished: amm.ncl")
      exit

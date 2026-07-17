@@ -25,13 +25,26 @@ begin
   eyear = new(nsim,"integer",-999)
   delim = "|"
 
+  names_EM = new(nsim,"string")
+  EM_num = new(nsim,"integer",-999)
+
   do gg = 0,nsim-1
      names(gg) = str_strip(str_get_field(na(gg),1,delim))
      paths(gg) = str_strip(str_get_field(na(gg),2,delim))
      syear(gg) = stringtointeger(str_strip(str_get_field(na(gg),3,delim)))
      eyear(gg) = stringtointeger(str_strip(str_get_field(na(gg),4,delim)))
+     temp      = str_split(str_strip(str_get_field(na(gg),5,delim)),"-")
+     temp2 = tochar(str_strip(str_get_field(na(gg),5,delim)))
+     if (tostring(temp2(0)).eq."-") then
+        EM_num(gg)    = toint(temp(0))*-1
+     else
+        EM_num(gg)    = toint(temp(0))
+     end if
+     names_EM(gg)  = str_join(temp(1:),"-")
+     delete([/temp,temp2/])
   end do
   delete(na)
+  nEM = max(EM_num)
   modname = str_sub_str(names," ","_")
   bc = (/"/","'","(",")"/)
   do ff = 0,dimsizes(modname)-1
@@ -118,13 +131,8 @@ begin
      delete([/tas,climo,all_region_avgs,all_region_climos,region_names,long_names,z/])
   end do
 
-  if (CREATE_GRAPHICS.eq."False") then
-     print("Finished: tas.indices.ncl")
-     exit
-  end if
-;===========================================================================================================================================================
-; the region list for plotting is taken from the variables actually written for the first
-; available simulation, so that it also covers the global/latitude-band extras
+; the region list for the ensemble means and the plots is taken from the variables actually
+; written for the first available simulation, so that it also covers the global/latitude-band extras
   region_names := new(1,string)
   do ee = 0,nsim-1
      fnt = OUTDIR+modname(ee)+".cvdp_data.tas.indices."+syear(ee)+"-"+eyear(ee)+".nc"
@@ -148,10 +156,49 @@ begin
      delete([/vnames,z/])
   end do
   if (ismissing(region_names(0))) then
-     print("tas.indices.ncl: no regional indices found for any simulation, no graphics can be created.")
+     print("tas.indices.ncl: no regional indices found for any simulation, no output can be created.")
      print("Finished: tas.indices.ncl")
      exit
   end if
+
+  if (nEM.ge.1) then     ; runstyle 2: create ensemble mean outputs from the member files
+     do gg = 1,nEM
+        emi := ind(EM_num.eq.gg)
+        le = dimsizes(emi)-1
+        ename = str_sub_str(names_EM(emi(0))," ","_")
+        fnts := OUTDIR+modname(emi)+".cvdp_data.tas.indices."+syear(emi)+"-"+eyear(emi)+".nc"
+        fnts2 := OUTDIR+modname(emi)+".cvdp_data."+syear(emi)+"-"+eyear(emi)+".nc"
+        fno = OUTDIR+ename+"_EM.cvdp_data.tas.indices."+syear(emi(le))+"-"+eyear(emi(le))+".nc"
+        zdone = False
+        do reg_i = 0,dimsizes(region_names)-1
+           vname = "ipcc_"+region_names(reg_i)+"_tas"
+           em := read_ensemble_mean(fnts,fnts2,vname)
+           if (isatt(em,"is_all_missing")) then
+              continue
+           end if
+           if (.not.zdone) then
+              if (isfilepresent2(fno)) then
+                 z = addfile(fno,"w")
+              else
+                 z = addfile(fno,"c")
+                 set_global_ncfile_attributes(z,names_EM(emi(0)),syear(emi(le)),eyear(emi(le)),getenv("VERSION"))
+              end if
+              zdone = True
+           end if
+           vname_em = vname+"_em"
+           z->$vname_em$ = set_varAtts(em,em@long_name+" Ensemble Mean","","")
+        end do
+        if (zdone) then
+           delete(z)
+        end if
+     end do
+  end if
+
+  if (CREATE_GRAPHICS.eq."False") then
+     print("Finished: tas.indices.ncl")
+     exit
+  end if
+;===========================================================================================================================================================
 
   wks_type = OUTPUT_TYPE
   if (wks_type.eq."png") then

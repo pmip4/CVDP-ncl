@@ -327,6 +327,60 @@ begin
      delete([/z,iod,iod_ts,jave/])
   end do
 
+  if (nEM.ge.1) then     ; runstyle 2: create ensemble mean outputs from the member files
+     do gg = 1,nEM
+        emi := ind(EM_num.eq.gg)
+        le = dimsizes(emi)-1
+        ename = str_sub_str(names_EM(emi(0))," ","_")
+        fnts := OUTDIR+modname(emi)+".cvdp_data.iod."+syear(emi)+"-"+eyear(emi)+".nc"
+        fnts2 := OUTDIR+modname(emi)+".cvdp_data."+syear(emi)+"-"+eyear(emi)+".nc"
+        em := read_ensemble_mean(fnts,fnts2,"iod_pattern_mon")
+        if (.not.isatt(em,"is_all_missing")) then
+           fno = OUTDIR+ename+"_EM.cvdp_data.iod."+syear(emi(le))+"-"+eyear(emi(le))+".nc"
+           if (isfilepresent2(fno)) then
+              z = addfile(fno,"w")
+           else
+              z = addfile(fno,"c")
+              set_global_ncfile_attributes(z,names_EM(emi(0)),syear(emi(le)),eyear(emi(le)),getenv("VERSION"))
+           end if
+           z->iod_pattern_mon_em = set_varAtts(em,"IOD spatial pattern (monthly) Ensemble Mean","","")
+           em := read_ensemble_mean(fnts,fnts2,"iod_spectra")
+           if (.not.isatt(em,"is_all_missing")) then
+              z->iod_spectra_em = set_varAtts(em,"IOD (monthly) power spectra Ensemble Mean","","")
+           end if
+           delete(z)
+        end if
+        fnts := OUTDIR+modname_tas(emi)+".cvdp_data.iod.tas."+syear_tas(emi)+"-"+eyear_tas(emi)+".nc"
+        fnts2 := OUTDIR+modname_tas(emi)+".cvdp_data."+syear_tas(emi)+"-"+eyear_tas(emi)+".nc"
+        em := read_ensemble_mean(fnts,fnts2,"iod_tas_regression_mon")
+        if (.not.isatt(em,"is_all_missing")) then
+           fno = OUTDIR+ename+"_EM.cvdp_data.iod.tas."+syear_tas(emi(le))+"-"+eyear_tas(emi(le))+".nc"
+           if (isfilepresent2(fno)) then
+              z = addfile(fno,"w")
+           else
+              z = addfile(fno,"c")
+              set_global_ncfile_attributes(z,names_EM(emi(0)),syear_tas(emi(le)),eyear_tas(emi(le)),getenv("VERSION"))
+           end if
+           z->iod_tas_regression_mon_em = set_varAtts(em,"tas regression onto IOD timeseries (monthly) Ensemble Mean","","")
+           delete(z)
+        end if
+        fnts := OUTDIR+modname_pr(emi)+".cvdp_data.iod.pr."+syear_pr(emi)+"-"+eyear_pr(emi)+".nc"
+        fnts2 := OUTDIR+modname_pr(emi)+".cvdp_data."+syear_pr(emi)+"-"+eyear_pr(emi)+".nc"
+        em := read_ensemble_mean(fnts,fnts2,"iod_pr_regression_mon")
+        if (.not.isatt(em,"is_all_missing")) then
+           fno = OUTDIR+ename+"_EM.cvdp_data.iod.pr."+syear_pr(emi(le))+"-"+eyear_pr(emi(le))+".nc"
+           if (isfilepresent2(fno)) then
+              z = addfile(fno,"w")
+           else
+              z = addfile(fno,"c")
+              set_global_ncfile_attributes(z,names_EM(emi(0)),syear_pr(emi(le)),eyear_pr(emi(le)),getenv("VERSION"))
+           end if
+           z->iod_pr_regression_mon_em = set_varAtts(em,"pr regression onto IOD timeseries (monthly) Ensemble Mean","","")
+           delete(z)
+        end if
+     end do
+  end if
+
   if (CREATE_GRAPHICS.eq."False") then
      print("Finished: iod.ncl")
      exit

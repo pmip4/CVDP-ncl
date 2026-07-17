@@ -38,13 +38,26 @@ begin
   eyear = new(nsim,"integer",-999)
   delim = "|"
 
+  names_EM = new(nsim,"string")
+  EM_num = new(nsim,"integer",-999)
+
   do gg = 0,nsim-1
      names(gg) = str_strip(str_get_field(na(gg),1,delim))
      paths(gg) = str_strip(str_get_field(na(gg),2,delim))
      syear(gg) = stringtointeger(str_strip(str_get_field(na(gg),3,delim)))
      eyear(gg) = stringtointeger(str_strip(str_get_field(na(gg),4,delim)))
+     temp      = str_split(str_strip(str_get_field(na(gg),5,delim)),"-")
+     temp2 = tochar(str_strip(str_get_field(na(gg),5,delim)))
+     if (tostring(temp2(0)).eq."-") then
+        EM_num(gg)    = toint(temp(0))*-1
+     else
+        EM_num(gg)    = toint(temp(0))
+     end if
+     names_EM(gg)  = str_join(temp(1:),"-")
+     delete([/temp,temp2/])
   end do
   delete(na)
+  nEM = max(EM_num)
   modname = str_sub_str(names," ","_")
   bc = (/"/","'","(",")"/)
   do ff = 0,dimsizes(modname)-1
@@ -261,6 +274,41 @@ begin
      end if
      delete([/pr,coswgt,area,monsoonrain,monsoonarea,z,TIME/])
   end do
+
+  if (nEM.ge.1) then     ; runstyle 2: create ensemble mean outputs from the member files
+     emvars = array_append_record((/"monsoon_domain","monsoon_rain_global","monsoon_area_global"/), \
+                                  array_append_record("monsoon_rain_"+domain_names,"monsoon_area_"+domain_names,0),0)
+     do gg = 1,nEM
+        emi := ind(EM_num.eq.gg)
+        le = dimsizes(emi)-1
+        ename = str_sub_str(names_EM(emi(0))," ","_")
+        fnts := OUTDIR+modname(emi)+".cvdp_data.monsoon."+syear(emi)+"-"+eyear(emi)+".nc"
+        fnts2 := OUTDIR+modname(emi)+".cvdp_data."+syear(emi)+"-"+eyear(emi)+".nc"
+        fno = OUTDIR+ename+"_EM.cvdp_data.monsoon."+syear(emi(le))+"-"+eyear(emi(le))+".nc"
+        zdone = False
+        do vv = 0,dimsizes(emvars)-1
+           em := read_ensemble_mean(fnts,fnts2,emvars(vv))
+           if (isatt(em,"is_all_missing")) then
+              continue
+           end if
+           if (.not.zdone) then
+              if (isfilepresent2(fno)) then
+                 z = addfile(fno,"w")
+              else
+                 z = addfile(fno,"c")
+                 set_global_ncfile_attributes(z,names_EM(emi(0)),syear(emi(le)),eyear(emi(le)),getenv("VERSION"))
+              end if
+              zdone = True
+           end if
+           vname_em = emvars(vv)+"_em"
+           z->$vname_em$ = set_varAtts(em,em@long_name+" Ensemble Mean","","")
+        end do
+        if (zdone) then
+           delete(z)
+        end if
+     end do
+     delete(emvars)
+  end if
 
   if (CREATE_GRAPHICS.eq."False") then
      print("Finished: monsoon.ncl")
