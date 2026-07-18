@@ -1,5 +1,8 @@
-; Calculates MOC means/standard deviations, AMOC EOF1/PC1, 
-; regressions onto AMOC PC1, and lag correlations vs. AMV
+; Calculates MOC means/standard deviations, the AMOC index and pattern,
+; regressions onto the AMOC index, and lag correlations vs. AMV.
+; The AMOC index is either the leading principal component of the annual overturning
+; (default) or, when the driver option amoc_30N is True, the annual maximum of the
+; overturning streamfunction below 500 m at 30N.
 ;
 ; Variables used: moc, ts, tas, zos
 ;
@@ -21,6 +24,16 @@ begin
   OPT_CLIMO        = getenv("OPT_CLIMO")
   CLIMO_SYEAR      = toint(getenv("CLIMO_SYEAR"))
   CLIMO_EYEAR      = toint(getenv("CLIMO_EYEAR"))
+  AMOC_30N         = getenv("AMOC_30N")
+  if (ismissing(AMOC_30N)) then
+     AMOC_30N = "False"
+  end if
+  if (AMOC_30N.eq."True") then
+     print("amoc.ncl: defining the AMOC index as the annual maximum of the overturning streamfunction at 30N")
+     amoclab = "AMOC 30N"
+  else
+     amoclab = "AMOC PC1"
+  end if
 
   pi=4.*atan(1.0)
   rad=(pi/180.)
@@ -212,6 +225,15 @@ begin
      amoc = where(amocvar.lt.vareps,amoc@_FillValue,amoc)
      delete(amocvar)     
 
+     if (AMOC_30N.eq."True") then     ; AMOC index = annual maximum of the raw overturning streamfunction below 500 m at 30N
+        amoc_pc_ann := dim_max_n_Wrap(moc_ann(5::12,{500:},{29.:31.}),(/1,2/))
+        amoc_pc_ann@detrend_option = amoc@detrend_option
+        moc_reg_ann := amoc(0,:,:)
+        moc_reg_ann = (/ regCoef(amoc_pc_ann,amoc(lev|:,lat|:,time|:)) /)     ; pattern = anomaly regression onto the index
+        moc_reg_ann@pcvar = "Mean = "+tofloat(sprintf("%4.1f",avg(amoc_pc_ann)))+" Sv"
+        delete([/atl_begin,lat,lev,amoc,ny,nz/])
+     else
+
      dlat = lat           ; Compute latitudinal weights (in meters)
      rEarth = 6.37122e8 		; Earth radius in m
      do iy=0,ny-1
@@ -282,6 +304,7 @@ begin
            end if
         end if
      end if
+     end if     ; AMOC_30N
      TIME := ispan(syear(ee),eyear(ee),1)
      TIME@units = "YYYY"
      TIME@long_name = "time"
@@ -292,7 +315,11 @@ begin
 
      amoc_pc_ann!0 = "TIME"
      amoc_pc_ann&TIME = TIME
-     amoc_pc_ann@long_name = "AMOC pc1 timeseries (annual)"
+     if (AMOC_30N.eq."True") then
+        amoc_pc_ann@long_name = "AMOC 30N timeseries (annual)"
+     else
+        amoc_pc_ann@long_name = "AMOC pc1 timeseries (annual)"
+     end if
      lat_amoc := moc_reg_ann&lat
      lat_amoc!0 = "lat_amoc"
      lat_amoc&lat_amoc = lat_amoc
@@ -514,7 +541,11 @@ begin
         splt1&frequency2@long_name = "power spectra frequency"
         splt1&frequency2@units = "1"
         splt1@detrend_option = amoc_pc_ann@detrend_option
-        splt1@units_info = "df refers to frequency interval; data are standardized so there are no physical units"
+        if (AMOC_30N.eq."True") then
+           splt1@units_info = "df refers to frequency interval; computed from the AMOC 30N timeseries (Sv)"
+        else
+           splt1@units_info = "df refers to frequency interval; data are standardized so there are no physical units"
+        end if
         splt1@units = "1/df"
         splt1@info = "(0,:)=spectrum,(1,:)=Markov red noise spectrum, (2,:)="+val1+"% confidence bound for Markhov, (3,:)="+val2+"% confidence bound for Markhov"
         delete([/sdof/])
@@ -532,22 +563,38 @@ begin
         z->$(/"amoc_amv_lag_cor"/)$ = set_varAtts(ccr,"","1","")
         delete(ccr)
      end if
-     z->$(/"amoc_timeseries_ann"/)$ = set_varAtts(amoc_pc_ann,"","1","")
+     if (AMOC_30N.eq."True") then
+        z->$(/"amoc_timeseries_ann"/)$ = set_varAtts(amoc_pc_ann,"","Sv","")
+     else
+        z->$(/"amoc_timeseries_ann"/)$ = set_varAtts(amoc_pc_ann,"","1","")
+     end if
      z->$(/"amoc_mean_ann"/)$   = set_varAtts(moc_mean_ann,"AMOC mean (annual)","","") 
      z->$(/"amoc_stddev_ann"/)$ = set_varAtts(moc_sd_ann,"AMOC standard deviation (annual)","","")
-     z->$(/"amoc_pattern_ann"/)$    = set_varAtts(moc_reg_ann,"AMOC regression onto AMOC principal component timeseries (annual)","","") 
+     if (AMOC_30N.eq."True") then
+        z->$(/"amoc_pattern_ann"/)$ = set_varAtts(moc_reg_ann,"AMOC regression onto the AMOC 30N timeseries (annual)","Sv/Sv","")
+     else
+        z->$(/"amoc_pattern_ann"/)$    = set_varAtts(moc_reg_ann,"AMOC regression onto AMOC principal component timeseries (annual)","","")
+     end if 
      delete([/z,amoc_pc_ann,moc_mean_ann,moc_sd_ann,moc_reg_ann/])
 
      if (isvar("sst_reg_ann")) then
         z = addfile(getenv("OUTDIR")+modname_ts(ee)+".cvdp_data.amoc.ts."+syear_ts(ee)+"-"+eyear_ts(ee)+".nc","c")
         set_global_ncfile_attributes(z,names_ts(ee),syear_ts(ee),eyear_ts(ee),getenv("VERSION"))
-        z->$(/"amoc_sst_regression_ann"/)$ = set_varAtts(sst_reg_ann,"sst regression onto AMOC principal component timeseries (annual)","","") 
+        if (AMOC_30N.eq."True") then
+           z->$(/"amoc_sst_regression_ann"/)$ = set_varAtts(sst_reg_ann,"sst regression onto the AMOC 30N timeseries (annual)","oC/Sv","")
+        else
+           z->$(/"amoc_sst_regression_ann"/)$ = set_varAtts(sst_reg_ann,"sst regression onto AMOC principal component timeseries (annual)","","")
+        end if 
         delete([/z,sst_reg_ann/]) 
      end if
      if (isvar("tas_reg_ann")) then
         z = addfile(getenv("OUTDIR")+modname_tas(ee)+".cvdp_data.amoc.tas."+syear_tas(ee)+"-"+eyear_tas(ee)+".nc","c")
         set_global_ncfile_attributes(z,names_tas(ee),syear_tas(ee),eyear_tas(ee),getenv("VERSION"))
-        z->$(/"amoc_tas_regression_ann"/)$ = set_varAtts(tas_reg_ann,"tas regression onto AMOC principal component timeseries (annual)","","") 
+        if (AMOC_30N.eq."True") then
+           z->$(/"amoc_tas_regression_ann"/)$ = set_varAtts(tas_reg_ann,"tas regression onto the AMOC 30N timeseries (annual)","oC/Sv","")
+        else
+           z->$(/"amoc_tas_regression_ann"/)$ = set_varAtts(tas_reg_ann,"tas regression onto AMOC principal component timeseries (annual)","","")
+        end if 
         delete([/z,tas_reg_ann/]) 
      end if
      if (isvar("zos_reg_ann")) then
@@ -564,7 +611,11 @@ begin
            delete([/LAT2D,LON2D/])
            zos_reg_ann@coordinates ="lat2d_ocean lon2d_ocean"
         end if  
-        z->$(/"amoc_zos_regression_ann"/)$ = set_varAtts(zos_reg_ann,"zos regression onto AMOC principal component timeseries (annual)","","") 
+        if (AMOC_30N.eq."True") then
+           z->$(/"amoc_zos_regression_ann"/)$ = set_varAtts(zos_reg_ann,"zos regression onto the AMOC 30N timeseries (annual)","","")
+        else
+           z->$(/"amoc_zos_regression_ann"/)$ = set_varAtts(zos_reg_ann,"zos regression onto AMOC principal component timeseries (annual)","","")
+        end if 
         delete([/z,zos_reg_ann/]) 
      end if
 
@@ -856,7 +907,7 @@ begin
      delete([/arr_store,arr_EM,arr_range1,arr_range2,z/])
      cntr_EM = cntr_EM+1
   end do
-  panres@txString = "AMOC PC1 Power Spectra (Annual)"
+  panres@txString = amoclab+" Power Spectra (Annual)"
   gsn_panel2(wks,plot_indmem,(/nrow,ncol/),panres)
 
   pres_sumA@xyCurveDrawOrder = "PostDraw"
@@ -883,7 +934,7 @@ begin
         plot_final(nEM)    = plot_sum(ii_ind)
      end if
      panres2@gsnPanelMainPosYF = set_panel_title_YF(nEM+1,pres)
-     panres2@gsnPanelMainString = "Ensemble Summary: AMOC PC1 Power Spectra (Annual)"
+     panres2@gsnPanelMainString = "Ensemble Summary: "+amoclab+" Power Spectra (Annual)"
      gsn_panel2(wks,plot_final,(/nrowE,ncolE/),panres2)
      if (numobs.ne.0) then
         gsn_text_ndc(wks,names(0)+" "+syear(0)+"-"+eyear(0),0.5,panres2@gsnPanelMainPosYF-.02,txres)
@@ -953,7 +1004,7 @@ begin
   xyres@gsnRightStringParallelPosF = 0.99
   xyres@gsnLeftString = "AMV Leads"
   xyres@gsnCenterString = ""
-  xyres@gsnRightString = "AMOC PC1 Leads"
+  xyres@gsnRightString = amoclab+" Leads"
 
   xyres_obs = xyres
   xyres_obs@xyLineColor = "gray62"
@@ -1006,7 +1057,7 @@ begin
   end if
 
   xyres@gsnCenterString = names(0)   
-  xyres@gsnRightString = "      "+syear(0)+"-"+eyear(0)+"~C~AMOC PC1 Leads"  
+  xyres@gsnRightString = "      "+syear(0)+"-"+eyear(0)+"~C~"+amoclab+" Leads"  
 
   if (.not.isatt(obs0,"is_all_missing")) then
      plot_indmem(0) = gsn_csm_xy(wks,obs0&time_lag_cor,obs0,xyres)   ; plot first observational set
@@ -1029,7 +1080,7 @@ begin
            continue
         end if
         xyres@gsnCenterString = names(cntr)   
-        xyres@gsnRightString = "            "+syear(cntr)+"-"+eyear(cntr)+"~C~AMOC PC1 Leads"  
+        xyres@gsnRightString = "            "+syear(cntr)+"-"+eyear(cntr)+"~C~"+amoclab+" Leads"  
         plot_indmem(cntr) = gsn_csm_xy(wks,arr&time_lag_cor,arr,xyres)
         if (.not.isatt(obs0,"is_all_missing")) then
            plot_obs_overlay(cntr)   = gsn_csm_xy(wks,obs0&time_lag_cor,obs0,xyres_obs)
@@ -1070,7 +1121,7 @@ begin
            xyres@gsnCenterStringFontColor = csubtitle_color(gg-1)
         end if
         xyres@gsnCenterString = names_mod  
-        xyres@gsnRightString = "            "+syear_mod+"-"+eyear_mod+"~C~AMOC PC1 Leads"   
+        xyres@gsnRightString = "            "+syear_mod+"-"+eyear_mod+"~C~"+amoclab+" Leads"   
         plot_indmem(cntr) = gsn_csm_xy(wks,arr&time_lag_cor,arr,xyres)
         if (.not.isatt(obs0,"is_all_missing")) then
            plot_obs_overlay(cntr)   = gsn_csm_xy(wks,obs0&time_lag_cor,obs0,xyres_obs)
@@ -1128,9 +1179,9 @@ begin
 
      xyres2@gsnLeftString = ""
      if (showyr) then
-        xyres2@gsnRightString = "            "+syear_em0+"-"+eyear_em0+"~C~AMOC PC1 Leads"   
+        xyres2@gsnRightString = "            "+syear_em0+"-"+eyear_em0+"~C~"+amoclab+" Leads"   
      else
-        xyres2@gsnRightString = "               "+(eyear_em0-syear_em0+1)+"yrs~C~AMOC PC1 Leads"  
+        xyres2@gsnRightString = "               "+(eyear_em0-syear_em0+1)+"yrs~C~"+amoclab+" Leads"  
      end if
      delete([/syear_em0,eyear_em0,showyr/])
 
@@ -1170,7 +1221,7 @@ begin
      delete([/arr_store,arr_EM,arr_range1,arr_range2,z/])
      cntr_EM = cntr_EM+1
   end do
-  panres@txString = "AMV / AMOC PC1 Lag Correlation (Annual)"
+  panres@txString = "AMV / "+amoclab+" Lag Correlation (Annual)"
   gsn_panel2(wks,plot_indmem,(/nrow,ncol/),panres)
 
   xyres_obs@xyCurveDrawOrder = "PostDraw"
@@ -1198,7 +1249,7 @@ begin
      end if
 
      panres2@gsnPanelMainPosYF = set_panel_title_YF(nEM,xyres)
-     panres2@gsnPanelMainString = "Ensemble Summary: AMV / AMOC PC1 Lag Correlation (Annual)"
+     panres2@gsnPanelMainString = "Ensemble Summary: AMV / "+amoclab+" Lag Correlation (Annual)"
      gsn_panel2(wks,plot_final,(/nrowE,ncolE/),panres2)
      if (numobs.ne.0) then  
         gsn_text_ndc(wks,names(0)+" "+syear(0)+"-"+eyear(0),0.5,panres2@gsnPanelMainPosYF-.02,txres)
@@ -1316,7 +1367,7 @@ begin
 
   variname := (/"amoc_timeseries_ann"/)
   variname_obs := "amoc_timeseries_ann"
-  variname_title := (/"AMOC PC1 (Annual)"/)
+  variname_title := (/amoclab+" (Annual)"/)
 
   do dd = 0,dimsizes(variname)-1
      wks = gsn_open_wks(wks_type,getenv("OUTDIR")+"amoc.timeseries")
@@ -1372,6 +1423,9 @@ begin
         obs_val := decimalPlaces(tttt@slope*dimsizes(obs0&time),2,True)+obs0@units+" "+nyr(0)+"yr~S~-1~N~"
      end if
      xyres@gsnRightString = obs_val
+     if (AMOC_30N.eq."True") then
+        xyres@gsnYRefLine = avg(obs0)
+     end if
      plot_indmem(0) = gsn_csm_xy(wks,obs0&time,obs0,xyres)
      xyres2A@gsnLeftString = "Ensemble Mean Summary"
      plot_obs := gsn_csm_xy(wks,obs0&time,obs0,xyres2A)
@@ -1394,6 +1448,9 @@ begin
            tttt := dtrend_msg(ispan(0,dimsizes(arr&time)-1,1),arr,False,True)   
            xyres@gsnLeftString = names(cntr)
            xyres@gsnRightString = decimalPlaces(tttt@slope*dimsizes(arr&time),2,True)+arr@units+" "+nyr(cntr)+"yr~S~-1~N~"
+           if (AMOC_30N.eq."True") then
+              xyres@gsnYRefLine = avg(arr)
+           end if
            plot_indmem(cntr) = gsn_csm_xy(wks,arr&time,arr,xyres)
            plot_obs_overlay(cntr) = gsn_csm_xy(wks,obs0&time,obs0,xyres2)
            overlay(plot_indmem(cntr),plot_obs_overlay(cntr))
@@ -1454,6 +1511,9 @@ begin
            tttt := dtrend_msg(ispan(0,dimsizes(arr&time)-1,1),arr,False,True)   
            xyres@gsnLeftString = names_mod
            xyres@gsnRightString = decimalPlaces(tttt@slope*dimsizes(arr&time),2,True)+arr@units+" "+nyr(cntr)+"yr~S~-1~N~"
+           if (AMOC_30N.eq."True") then
+              xyres@gsnYRefLine = avg(arr)
+           end if
            plot_indmem(cntr) = gsn_csm_xy(wks,arr&time,arr,xyres)
            plot_obs_overlay(cntr) = gsn_csm_xy(wks,obs0&time,obs0,xyres2)
            overlay(plot_indmem(cntr),plot_obs_overlay(cntr))

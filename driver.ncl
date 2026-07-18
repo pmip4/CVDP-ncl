@@ -16,6 +16,13 @@
   remove_trend_model= "QuadraticTrend"       ; valid options are None, LinearTrend, QuadraticTrend, 30yrRunningMean, rmGMST_EM, rmEM  (see documentation)
   ensemble_mean_dir = "/project/cas/CVDP-EM_ncl/"     ; directory where the ensemble means should be located when remove_trend_model = "rmGMST_EM" or "rmEM"
 
+  amoc_30N          = "False"                ; False = the AMOC index and pattern are defined via the leading principal component of the
+                                             ; annual Atlantic overturning (Danabasoglu et al. 2012). (Default)
+                                             ; True = the AMOC index is the annual maximum of the overturning streamfunction below 500m
+                                             ; at 30N, with the pattern formed by regression onto that timeseries.
+                                             ; Note: as previously computed data is reused, changing this option requires a new outdir
+                                             ; (or removal of the existing amoc output files).
+
   control_group_name   = "piControl"         ; (runstyle=3 only) name of the group (5th namelist column, text after the group number) containing each
                                              ; model's control simulation. Anomalies are computed as experiment minus this group, paired by model (6th column).
   mmm_write_individual = "False"             ; (runstyle=3 only) True = also write per-model regridded anomaly stacks to the multi-model output file.
@@ -142,6 +149,7 @@
          "export REMOVE_TREND_OBS="+remove_trend_obs+";   export REMOVE_TREND_MODEL="+remove_trend_model+";   "+\
          "export ENSEMBLE_MEAN_DIR="+ensemble_mean_dir+";   export MONTHLY_MODES="+compute_monthly_modes+";   "+\
          "export OPT_CLIMO="+opt_climo+";   export CLIMO_SYEAR="+climo_syear+";   export CLIMO_EYEAR="+climo_eyear+";   "+\
+         "export AMOC_30N="+amoc_30N+";   "+\
          "export MAX_TASKS="+max_num_tasks+";   export IM_COMMAND="+im+";"
   if (regrid_check.eq."True") then
      envvar_str = envvar_str+"   export REGRID_TO_RES="+regrid_to_res+";   export REGRID_DIR="+regrid_dir+";"
@@ -229,6 +237,7 @@
      end if
      system("   export OUTDIR="+outdir+";   export VERSION="+version+";   "+\
             "export REMOVE_TREND_OBS="+remove_trend_obs+";   export REMOVE_TREND_MODEL="+remove_trend_model+";   "+\
+            "export AMOC_30N="+amoc_30N+";   "+\
             "export OBS="+obs+";   export CVDP_SCRIPTS="+zp+"; "+ncl_exec+" 'webtitle="+quote+webpage_title+quote+"' "+zp+"webpage"+wps+".ncl")
 
      system("cp "+zp+"cas-cvdp.png "+outdir)
