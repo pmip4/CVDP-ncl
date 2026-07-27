@@ -2591,19 +2591,23 @@ end
 ; zp0 = path of CVDP scripts, pngsize = size (in ImageMagick units) of png converted from ps
 ;
 undef("image_finalize")
-procedure image_finalize(odir[1]:string,otype[1]:string,max_nt[1]:integer,zp0[1]:string,pngsize[1]:integer,im_command[1]:string,fpattern[1]:string)
+procedure image_finalize(odir[1]:string,otype[1]:string,max_nt[1]:integer,zp0[1]:string,pngsize[1]:integer,im_command[1]:string,fpattern[1]:string,since[1]:string)
 ; fpattern selects the images to finalize: "*" = every image in odir (a full run);
 ; "mmm.*" = only the multi-model mean figures (driver.ncl mmm_webpages_only mode, where
-; the other images are already trimmed/watermarked and must not be processed twice)
-local odir,otype,max_nt,zp0,pngsize,ofiles,ofilesS,ofilesT,gg,filesize,ofiles_png,numPlotsCompleted,numJobsActive,pid,command,im_command,fpattern
+; the other images are already trimmed/watermarked and must not be processed twice).
+; since is a marker file laid down by driver.ncl before this run began generating images:
+; only images modified after it (i.e. produced by this run) are finalized, so images left
+; in odir by an earlier run are not re-trimmed/re-watermarked (double-processed).
+local odir,otype,max_nt,zp0,pngsize,ofiles,ofilesS,ofilesT,gg,filesize,ofiles_png,numPlotsCompleted,numJobsActive,pid,command,im_command,fpattern,since,q
 begin
-  ofiles = systemfunc("bash -c 'ls "+odir+fpattern+"."+otype+" 2> /dev/null'")
+  q = str_get_dq()
+  ofiles = systemfunc("bash -c 'find "+odir+" -maxdepth 1 -name "+q+fpattern+"."+otype+q+" -newer "+since+" 2> /dev/null | sort'")
   if (ismissing(ofiles(0))) then
      return
   end if
   if (otype.ne."png") then
-     ofilesS = systemfunc("ls "+outdir+fpattern+"."+output_type)
-     ofilesT = systemfunc("ls -l "+outdir+fpattern+"."+output_type)
+     ofilesS = systemfunc("bash -c 'find "+odir+" -maxdepth 1 -name "+q+fpattern+"."+otype+q+" -newer "+since+" -print 2> /dev/null | sort'")
+     ofilesT = systemfunc("bash -c 'find "+odir+" -maxdepth 1 -name "+q+fpattern+"."+otype+q+" -newer "+since+" -print0 2> /dev/null | sort -z | xargs -0 -r ls -l'")
      do gg = 0,dimsizes(ofilesT)-1    ; check for empty .ps files, remove
         filesize =  tofloat(str_get_field(ofilesT(gg),5," "))
         if (filesize.lt.10000) then
@@ -2652,7 +2656,7 @@ begin
 ; Add watermark to metrics graphics
 
   if (fpattern.eq."*") then     ; on a selective finalize (mmm_webpages_only) the metrics
-     ofiles := systemfunc("ls "+odir+"*.gif 2> /dev/null")   ; graphics were not regenerated,
+     ofiles := systemfunc("bash -c 'find "+odir+" -maxdepth 1 -name "+q+"*.gif"+q+" -newer "+since+" 2> /dev/null | sort'")   ; graphics were not regenerated,
   else                                                       ; so do not rewatermark them
      ofiles := new(1,string)
   end if

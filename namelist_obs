@@ -1,7 +1,7 @@
 TS | ERSSTv5 | /data/oacd/obs/for_CVDP/ersstv5.185401-202412.nc | 1950 | 2023
 PSL | ERA5 | /data/oacd/obs/for_CVDP/era5.msl.rg1x1.194001-202312.nc | 1950 | 2023
 TREFHT | BEST | /data/oacd/obs/for_CVDP/best.tas.185001-202401.nc | 1950 | 2023
-PRECT | ERA5 | /data/oacd/obs/for_CVDP/era5.tp.rg1x1.194001-202312.nc | 1950 | 2023
+PRECT | ERA5 | /data/oacd/obs/for_CVDP/era5.tp.rg1x1.194001-202412.nc | 1950 | 2023
 aice_nh | NASA CDR NH | /data/oacd/obs/for_CVDP/seaice_conc_monthly_nh_NOAA_NSIDC_CDR.v04r00.197811-202312.nc | 1979 | 2023
 aice_sh | NASA CDR SH | /data/oacd/obs/for_CVDP/seaice_conc_monthly_sh_NOAA_NSIDC_CDR.v04r00.197811-202312.nc | 1979 | 2023
 MOC | CESM1 Forced Ocean Simulation | /data/oacd/obs/for_CVDP/g.e11_LENS.GECOIAF.T62_g16.009.pop.h.MOC.194801-201512.nc | 1950 | 2015

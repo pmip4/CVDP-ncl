@@ -172,6 +172,11 @@
      exit
   end if
 
+  finalize_marker = outdir+".cvdp_finalize_marker"   ; timestamp reference laid down before any images are (re)generated this run.
+  system("rm -f "+finalize_marker+"; touch "+finalize_marker)   ; image_finalize only processes images newer than this marker, so
+                                                                 ; images left in outdir by an earlier run (e.g. a modular or reused
+                                                                 ; run) are not re-trimmed/re-watermarked (double-processed).
+
   if (mmm_webpages_only.ne."True") then      ; mmm_webpages_only reuses the diagnostics output of a previous run
   if (regrid_check.eq."True") then
      print("Checking model input for unstructured data")
@@ -222,7 +227,7 @@
      else
         img_pattern = "*"
      end if
-     image_finalize(outdir,output_type,max_num_tasks,zp,toint(144*png_scale),im,img_pattern)    ; trim whitespace, convert to .png (if necessary) and apply watermarks to images
+     image_finalize(outdir,output_type,max_num_tasks,zp,toint(144*png_scale),im,img_pattern,finalize_marker)    ; trim whitespace, convert to .png (if necessary) and apply watermarks to images generated this run (newer than finalize_marker)
 
      quote = str_get_dq()
      system("cp namelist_byvar/* "+outdir)
@@ -246,6 +251,7 @@
         system("rm "+outdir+"*.gif")   ; remove metric graphics as images not requested
      end if
   end if
+  system("rm -f "+finalize_marker)   ; remove the per-run finalize timestamp marker
 
 ;--------------------------------------------
 ; Create tar file of output (if requested)
