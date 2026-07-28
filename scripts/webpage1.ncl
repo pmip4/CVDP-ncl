@@ -180,6 +180,9 @@ begin
 		txt(44) = "<td class="+quote+"text-left"+quote+">"
 		txt(45) = "<ul class="+quote+"list-inline my-0"+quote+">"
 		txt(46) = "<li class="+quote+"list-inline-item"+quote+"><a href="+quote+"methodology.html"+quote+">Methodology and Definitions</a></li><br>"
+     if (.not.ismissing(systemfunc("cd "+OUTDIR+" 2>/dev/null; ls ipcc_*.timeseries.png 2>/dev/null | head -1"))) then
+        txt(46) = txt(46)+"<li class="+quote+"list-inline-item"+quote+"><a href="+quote+"ar6_indices.html"+quote+">IPCC AR6 Regional Indices</a></li><br>"
+     end if
 
   if (isfilepresent2(OUTDIR+"metrics.table_0.html")) then
      btxt = "Metrics: <a href="+quote+"metrics.table_0.html"+quote+">Individual Tables</a></li><br>"
@@ -3925,6 +3928,100 @@ begin
   asciiwrite(OUTDIR+"index.html",txt3)
   delete([/txt,tt,tt2,txt2,txt3/])
 ;----------------------------------------------------------------------------
+; IPCC AR6 regional indices page: pr/tas area averages over the AR6 reference
+; regions (Iturbide et al. 2020) plus global/latitude bands, and the monsoon
+; diagnostics. Built only when the ipcc_*/monsoon_* figures are present.
+  ar6chk = systemfunc("cd "+OUTDIR+" 2>/dev/null; ls ipcc_*.timeseries.png monsoon_*.timeseries.png global_monsoon_domain.png 2>/dev/null | head -1")
+  if (.not.ismissing(ar6chk)) then
+     system("cp ${CVDP_SCRIPTS}AR6_reference_regions.jpg ${CVDP_SCRIPTS}AR6_monsoon_domains.jpg "+OUTDIR+" 2>/dev/null")
+     amf = addfile("$CVDP_SCRIPTS/AR6_masks_1x1.nc","r")
+     abv = amf->AR6_masks@abbrevs
+     rnm = amf->AR6_masks@region_names
+     rsuf = (/"","_lnd","_ocn"/)
+     rlab = (/""," (land)"," (ocean)"/)
+
+     txt := new(2000,"string")
+     txt(0) = "<HTML><HEAD><TITLE>CVDP: IPCC AR6 Regional Indices</TITLE><STYLE>"
+     txt(1) = "body {background-color: WhiteSmoke; font-family: Verdana, Geneva, sans-serif}"
+     txt(2) = "p.subtitle1 {font-size:20pt; color:darkgray}"
+     txt(3) = "p.btext {font-size:12pt; text-align:left}"
+     txt(4) = "p.btext2 {font-size:9pt; text-align:left}"
+     txt(5) = "p.cap {font-size:10pt; color:dimgray; text-align:left}"
+     txt(6) = "td {text-align:center; font-size:11pt}"
+     txt(7) = "td.s1 {text-align:left; font-size:11pt}"
+     txt(8) = "th {text-align:center; font-size:12pt; background-color:gainsboro}"
+     txt(9) = "</STYLE></HEAD><BODY>"
+     txt(10) = "<img src="+quote+"cas-cvdp.png"+quote+" width=990 alt="+quote+"CVDP logo"+quote+">"
+     txt(11) = "<TABLE width='990' border=0 cellpadding=6><tr><td width='30'><p class=btext>Go to:</p></td><td class=s1><a href="+quote+"methodology.html"+quote+">Methodology and Definitions</a><br><a href="+quote+"index.html"+quote+">Diagnostics Plots</a></td><td><h2 class="+quote+"text-center"+quote+">"+webtitle+"</h2></td></tr></table><hr width=990 align=left>"
+     txt(12) = "<p class=subtitle1>IPCC AR6 Regional Indices</p>"
+     txt(13) = "<p class=btext>Area-weighted averages of monthly precipitation (PR) and near-surface air temperature (TAS) anomalies over the IPCC AR6 reference regions (Iturbide et al., 2020), plus global and latitude-band averages. Each link opens a multi-panel timeseries showing every simulation and reference dataset.</p>"
+     txt(14) = "<img src="+quote+"AR6_reference_regions.jpg"+quote+" width=990 alt="+quote+"AR6 reference regions map"+quote+">"
+     txt(15) = "<p class=cap>Figure 1 of Iturbide et al. (2020): the IPCC AR6 reference regions and their acronyms. Source: <a href="+quote+"https://essd.copernicus.org/articles/12/2959/2020/"+quote+" target="+quote+"_blank"+quote+">Iturbide et al., Earth Syst. Sci. Data, 12, 2959-2970, 2020</a> (CC BY 4.0).</p>"
+     txt(16) = "<table border=1 cellpadding=4 width=990><tr><th>Region</th><th>Name</th><th>Precipitation</th><th>Temperature</th></tr>"
+     kk = 17
+     do rr = 0,dimsizes(abv)-1
+        do vv = 0,2
+           tok = abv(rr)+rsuf(vv)
+           if (isfilepresent2(OUTDIR+"ipcc_"+tok+"_pr.timeseries.png").or.isfilepresent2(OUTDIR+"ipcc_"+tok+"_tas.timeseries.png")) then
+              txt(kk) = "<tr><td>"+tok+"</td><td class=s1>"+rnm(rr)+rlab(vv)+"</td><td>"+table_link_setup(OUTDIR,"ipcc_"+tok+"_pr.timeseries.png","PR")+"</td><td>"+table_link_setup(OUTDIR,"ipcc_"+tok+"_tas.timeseries.png","TAS")+"</td></tr>"
+              kk = kk+1
+           end if
+        end do
+     end do
+     etok = (/"GLOBAL_all","GLOBAL_lnd","GLOBAL_ocn", \
+              "NH_highlats_all","NH_highlats_lnd","NH_highlats_ocn", \
+              "NH_midlats_all","NH_midlats_lnd","NH_midlats_ocn", \
+              "NH_tropics_all","NH_tropics_lnd","NH_tropics_ocn", \
+              "SH_tropics_all","SH_tropics_lnd","SH_tropics_ocn", \
+              "SH_midlats_all","SH_midlats_lnd","SH_midlats_ocn", \
+              "SH_highlats_all","SH_highlats_lnd","SH_highlats_ocn"/)
+     enam = (/"Global (all)","Global (land)","Global (ocean)", \
+              "60-90N (all)","60-90N (land)","60-90N (ocean)", \
+              "30-60N (all)","30-60N (land)","30-60N (ocean)", \
+              "0-30N (all)","0-30N (land)","0-30N (ocean)", \
+              "0-30S (all)","0-30S (land)","0-30S (ocean)", \
+              "30-60S (all)","30-60S (land)","30-60S (ocean)", \
+              "60-90S (all)","60-90S (land)","60-90S (ocean)"/)
+     do rr = 0,dimsizes(etok)-1
+        if (isfilepresent2(OUTDIR+"ipcc_"+etok(rr)+"_pr.timeseries.png").or.isfilepresent2(OUTDIR+"ipcc_"+etok(rr)+"_tas.timeseries.png")) then
+           txt(kk) = "<tr><td>"+etok(rr)+"</td><td class=s1>"+enam(rr)+"</td><td>"+table_link_setup(OUTDIR,"ipcc_"+etok(rr)+"_pr.timeseries.png","PR")+"</td><td>"+table_link_setup(OUTDIR,"ipcc_"+etok(rr)+"_tas.timeseries.png","TAS")+"</td></tr>"
+           kk = kk+1
+        end if
+     end do
+     txt(kk) = "</table>"
+     kk = kk+1
+     if (isfilepresent2(OUTDIR+"global_monsoon_domain.png").or.isfilepresent2(OUTDIR+"monsoon_area_global.timeseries.png")) then
+        txt(kk) = "<hr width=990 align=left><p class=subtitle1>Global and Regional Monsoons</p>"
+        kk = kk+1
+        txt(kk) = "<img src="+quote+"AR6_monsoon_domains.jpg"+quote+" width=990 alt="+quote+"AR6 monsoon domains"+quote+">"
+        kk = kk+1
+        txt(kk) = "<p class=cap>IPCC AR6 WGI, Figure AV.1: global and regional monsoon domains.</p>"
+        kk = kk+1
+        txt(kk) = "<p class=btext>"+table_link_setup(OUTDIR,"global_monsoon_domain.png","Global monsoon domain map")+"</p>"
+        kk = kk+1
+        txt(kk) = "<table border=1 cellpadding=4 width=990><tr><th>Monsoon region</th><th>Area index</th><th>Rainfall index</th></tr>"
+        kk = kk+1
+        mtok = (/"NAmerM","EqAmer","SAmerM","WAfriM","SAfri","SAsiaM","EAsiaM","AusMCM","global"/)
+        mnam = (/"N. American","Equatorial American","S. American","W. African","S. African","S. Asian","E. Asian","Australian-Maritime Continent","Global"/)
+        do rr = 0,dimsizes(mtok)-1
+           if (isfilepresent2(OUTDIR+"monsoon_area_"+mtok(rr)+".timeseries.png").or.isfilepresent2(OUTDIR+"monsoon_rain_"+mtok(rr)+".timeseries.png")) then
+              txt(kk) = "<tr><td class=s1>"+mnam(rr)+" ("+mtok(rr)+")</td><td>"+table_link_setup(OUTDIR,"monsoon_area_"+mtok(rr)+".timeseries.png","Area")+"</td><td>"+table_link_setup(OUTDIR,"monsoon_rain_"+mtok(rr)+".timeseries.png","Rainfall")+"</td></tr>"
+              kk = kk+1
+           end if
+        end do
+        txt(kk) = "</table>"
+        kk = kk+1
+     end if
+     txt(kk) = "Created "+systemfunc("date")
+     kk = kk+1
+     txt(kk) = "<p class=btext2>CVDP Version "+VERSION+"</p></body></html>"
+     tt := ind(.not.ismissing(txt))
+     txt2 := txt(:tt(dimsizes(tt)-1)+1)
+     txt2 = where(ismissing(txt2),"",txt2)
+     asciiwrite(OUTDIR+"ar6_indices.html",txt2)
+     delete([/txt,tt,txt2,amf,abv,rnm/])
+  end if
+;----------------------------------------------------------------------------
 ; Namelist pages
   txt := new(500,"string")  
   
@@ -4241,7 +4338,15 @@ begin
   txt(129)= "<td>Area-averaged SST anomalies (in Celsius) computed over 50&deg;:70&deg;S, 0:360&deg;E. </td></tr>"
   txt(130) = "</table>"
   txt(131) = ""
- 
+
+  txt(132) = "<p class=subtitle>IPCC AR6 Regional and Monsoon Indices</p>"
+  txt(133) = "<TABLE width='800' border=1 frame=void rules=all cellpadding=6 bordercolor=darkgray>"
+  txt(134) = "<tr><td><b>AR6 regional PR &amp; TAS indices</b></td>"
+  txt(135) = "<td>Area-weighted averages of monthly precipitation and near-surface air temperature anomalies over each of the 58 IPCC AR6 reference regions (Iturbide et al., 2020), plus global and six latitude-band (60-90&deg;, 30-60&deg;, 0-30&deg; in each hemisphere) averages, each split into all/land/ocean with a land-sea mask. No detrending is applied; the linear trend is shown on each timeseries. Series are plotted per region for every simulation and reference dataset (see the <a href="+quote+"ar6_indices.html"+quote+">IPCC AR6 Regional Indices</a> page). To keep the multi-panel figures legible, monthly series are smoothed and thinned before plotting: an annual running mean sampled yearly for 30-150 year records, or a decadal (10-year) running mean sampled every 5 years for records longer than 150 years, each with a &plusmn;1&sigma; envelope; series of 30 years or less are drawn at full monthly resolution. See Iturbide, M., et al. (2020), An update of IPCC climate reference regions for subcontinental analysis of climate model data, Earth Syst. Sci. Data, 12, 2959-2970, doi:10.5194/essd-12-2959-2020.</td></tr>"
+  txt(136) = "<tr><td><b>Global and regional monsoons</b></td>"
+  txt(137) = "<td>The global monsoon domain and the eight AR6 regional monsoons (IPCC AR6 WGI, Figure AV.1: NAmerM, EqAmer, SAmerM, WAfriM, SAfri, SAsiaM, EAsiaM, AusMCM) are diagnosed from the local summer-minus-winter precipitation range and intensity. Per-region monsoon-area (domain extent) and monsoon-rain (precipitation) indices are provided on the <a href="+quote+"ar6_indices.html"+quote+">IPCC AR6 Regional Indices</a> page.</td></tr>"
+  txt(138) = "</table>"
+
   txt(142) = "<br>Created "+systemfunc("date")
   txt(143) = "<p class=btext>CVDP Version "+VERSION+"</p>"
   txt(144) = "</body></html>"

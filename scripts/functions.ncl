@@ -3009,7 +3009,7 @@ undef("plot_index_timeseries")
 procedure plot_index_timeseries(wksp[1]:graphic,xvals[*]:numeric,ts[*]:numeric,nsamp_yr[1]:integer, \
                                 envcolor[1]:string,xyres_in[1]:logical,plots[*]:graphic,envs[*]:graphic,pp[1]:integer)
 local wksp,xvals,ts,nsamp_yr,envcolor,xyres_in,xyres,n,nyears,spanner,trline,vunits,rstring,w,mnv,vav,sdv, \
-      ii,arr,gsres,good,xg,xlocs,ylocs,pp
+      ii,arr,gsres,good,xg,xlocs,ylocs,pp,stride
 begin
   if (all(ismissing(ts))) then     ; nothing to plot (e.g. an ocean region of a land-only
      return                        ; dataset); the caller's plots(pp) element stays missing
@@ -3025,13 +3025,36 @@ begin
   end if
   rstring = decimalPlaces(trline@slope*n,2,True)+vunits+" "+nyears+"yr~S~-1~N~"
 
-  if (nyears.gt.150) then
-     w = 30                                   ; running mean/standard deviation window (samples)
+  ; Choose a running-mean window w and subsample stride (both in samples).
+  ; w = -1 plots the full raw series (no smoothing/subsampling). nsamp_yr=1 (annual data,
+  ; e.g. monsoon.ncl) keeps the original behaviour; sub-annual data (pr/tas.indices,
+  ; nsamp_yr=12) is smoothed and thinned to annual (30-150 yr) or decadal (>150 yr)
+  ; resolution, which both cleans up the plot and cuts the number of points drawn.
+  w = -1
+  stride = nsamp_yr
+  if (nsamp_yr.eq.1) then
+     if (nyears.gt.150) then
+        w = 30                                ; 30-yr running mean
+        stride = 5*nsamp_yr                   ; one value every 5 years
+     end if
+  else
+     if (nyears.gt.150) then
+        w = 10*nsamp_yr                       ; decade running mean (=120 for monthly)
+        stride = 5*nsamp_yr                   ; one value every 5 years (=60)
+     else
+        if (nyears.gt.30) then
+           w = nsamp_yr                       ; annual running mean (=12)
+           stride = nsamp_yr                  ; one value per year (=12)
+        end if
+     end if
+  end if
+
+  if (w.gt.0) then
      mnv = runave(ts,w,0)
      vav = runave(ts*ts,w,0) - mnv*mnv        ; running variance via E[x2]-E[x]2 in place of a
      vav = where(vav.lt.0,0,vav)              ; per-sample loop (guard rounding below zero)
      sdv = sqrt(vav*(w/(w-1.)))
-     ii = ispan(0,n-1,5*nsamp_yr)             ; one value every 5 years
+     ii = ispan(0,n-1,stride)                 ; subsample step depends on data frequency
      arr = new((/2,dimsizes(ii)/),typeof(ts))
      arr(0,:) = (/ mnv(ii) /)
      arr(1,:) = (/ (ii*trline@slope)+trline@y_intercept /)
