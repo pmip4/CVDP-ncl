@@ -5,6 +5,9 @@
 ;   (a) experiment multi-model mean          (b) control multi-model mean
 ;   (c) multi-model mean anomaly, stippled   (d) cross-model standard deviation
 ;       where >= 2/3 of models agree on the sign of the anomaly
+; Sea ice fields are drawn on a NH/SH polar stereographic projection and modes of
+; variability are centred on their ocean basin (see mmm_basin below); all other
+; fields keep the default global projection.
 ; written as mmm.<experiment group>_minus_<control group>.<variable>.<png/ps>, plus a
 ; simple <experiment group>_minus_<control group>.mmm.html index page linking the images.
 ;
@@ -87,6 +90,43 @@ begin
      srank = dimsizes(seasons)
   end if
   return(sprinti("%1i",sec)+sprinti("%03i",prank)+sprinti("%02i",srank))
+end
+
+undef("mmm_basin")
+function mmm_basin(base:string)
+; returns the natural map framing for a multi-model diagnostic figure, so the
+; four-panel maps are not left on the default lon-0-centred global projection:
+;   "npolar"/"spolar" = hemispheric stereographic (sea ice + annular modes)
+;   "pacific"/"atlantic"/"indian" = WinkelTripel centred on that ocean basin
+;   "global" = leave the default global projection (climatologies, trends, ...)
+; The basin centres mirror sst.indices.ncl (Pacific=210, Atlantic=0, Indian=80);
+; the polar framings mirror siconc.mean_stddev.ncl (sea ice) and nam/sam (modes).
+local base,prefixes,codes,np,pp,ploc
+begin
+  prefixes = (/"siconc_nh","siconc_sh", \
+               "nam","nao","pna","npo", \
+               "sam","psa1","psa2", \
+               "nino34","nino12","nino3","nino4","pdv","ipv","so_", \
+               "north_pacific","south_pacific","southern_ocean", \
+               "amv","amm","atl3","atlantic","north_atlantic","north_tropical_atlantic","south_tropical_atlantic", \
+               "iod","indian_ocean_dipole","tropical_indian_ocean"/)
+  codes    = (/"npolar","spolar", \
+               "npolar","npolar","npolar","npolar", \
+               "spolar","spolar","spolar", \
+               "pacific","pacific","pacific","pacific","pacific","pacific","pacific", \
+               "pacific","pacific","pacific", \
+               "atlantic","atlantic","atlantic","atlantic","atlantic","atlantic","atlantic", \
+               "indian","indian","indian"/)
+  np = dimsizes(prefixes)
+  do pp = 0,np-1
+     ploc = str_index_of_substr(base,prefixes(pp),1)
+     if (.not.ismissing(ploc)) then
+        if (ploc.eq.0) then     ; first prefix the diagnostic name starts with wins
+           return(codes(pp))
+        end if
+     end if
+  end do
+  return("global")
 end
 
 begin
@@ -176,6 +216,42 @@ begin
            vunits = anom@units
         end if
         res@gsnRightString = vunits
+
+        basin = mmm_basin(base)              ; frame sea ice on the pole and modes on their ocean basin
+        if (basin.eq."npolar".or.basin.eq."spolar") then
+           res@mpPerimOn = True
+           res@mpGridAndLimbOn = False
+           res@mpCenterLonF = 0.
+           iceloc = str_index_of_substr(base,"siconc",1)
+           if (.not.ismissing(iceloc).and.iceloc.eq.0) then
+              minlat = 40.                   ; sea ice: crop to the ice-covered cap (siconc.mean_stddev template)
+           else
+              minlat = 20.                   ; annular modes (NAM/NAO/PNA/NPO/SAM/PSA)
+           end if
+           if (basin.eq."npolar") then
+              res@gsnPolar = "NH"
+              res@mpMinLatF = minlat
+           else
+              res@gsnPolar = "SH"
+              res@mpMaxLatF = -minlat
+           end if
+        else if (basin.ne."global") then     ; basin modes: WinkelTripel centred on the basin
+           res@mpProjection = "WinkelTripel"
+           res@mpPerimOn = False
+           res@mpGridLatSpacingF = 90.
+           res@mpGridLonSpacingF = 180.
+           res@mpGridLineColor = "transparent"
+           res@mpGridAndLimbOn = True
+           if (basin.eq."pacific") then
+              res@mpCenterLonF = 210.
+           else if (basin.eq."atlantic") then
+              res@mpCenterLonF = 0.
+           else                              ; indian
+              res@mpCenterLonF = 80.
+           end if
+           end if
+        end if
+        end if
 
         resM = res                           ; panels (a)+(b): common levels across experiment and control
         resM@cnFillPalette = "WhiteBlueGreenYellowRed"
