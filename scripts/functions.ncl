@@ -959,6 +959,12 @@ begin
                  if (any(strarr.eq."latitude")) then      ; NSIDC latitude 2D coordinate
                     arr@lat2d = c[0]->latitude
                  end if
+                 if (any(strarr.eq."nav_lon")) then      ; NEMO longitude 2D coordinate (e.g. IPSL-CM6A-LR and other NEMO/eORCA models)
+                    arr@lon2d = c[0]->nav_lon
+                 end if
+                 if (any(strarr.eq."nav_lat")) then      ; NEMO latitude 2D coordinate
+                    arr@lat2d = c[0]->nav_lat
+                 end if
                  delete(strarr)
 
                  dir_temp = str_sub_str(tfiles(0),"/sic/","/areacello/")    ; Attempt to find area files
@@ -1054,6 +1060,13 @@ begin
   arr!0 = "time"
   arr!1 = "j"
   arr!2 = "i"
+
+  if (.not.isatt(arr,"lat2d").and..not.iscoord(arr,"j")) then   ; unrecognized grid: no 2D lat2d was attached and the
+     print("data_read_in_ice: "+zpath+" has an unrecognized grid (no lat2d and no 1D j coordinate); returning missing "+\
+           "rather than aborting the diagnostic.")                ; horizontal dimension has no 1D coordinate either.
+     arr := create_empty_array(yearS,yearE,1,12,"time_lat_lon")   ; drop this simulation (warn-and-continue) instead of
+     return(arr)                                                  ; a hard fatal that would abort every later simulation.
+  end if
 
   if (.not.isatt(arr,"lat2d")) then     ; if latitudes are 1D, make sure latitudes run from south to north +
      if (arr&j(0).ge.0) then            ; calculate area of 1D lat/lon arrays
