@@ -137,6 +137,12 @@ begin
   VERSION     = getenv("VERSION")
 
   fils = systemfunc("ls "+OUTDIR+"*.cvdp_mmm.nc 2> /dev/null")
+  onefile = getenv("MMM_ONEFILE")            ; optional: process just this one .cvdp_mmm.nc, so driver.ncl can run
+  if (.not.ismissing(onefile)) then          ; one graphics process per file in parallel. Each file's figures and
+     if (onefile.ne."") then                 ; .mmm.html carry that group's name, so parallel processes never collide.
+        fils := (/onefile/)
+     end if
+  end if
   if (ismissing(fils(0))) then
      print("multi_model_graphics.ncl: no .cvdp_mmm.nc files found in "+OUTDIR+". Exiting.")
      exit

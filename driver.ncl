@@ -224,8 +224,9 @@
 ;
   if (create_graphics.eq."True") then
      print("Creating webpages and finalizing images")
-     if (runstyle.eq.3) then
-        system(envvar_str + " "+ncl_exec+" "+zp+"multi_model_graphics.ncl")     ; multi-model mean maps + .mmm.html index page
+     if (runstyle.eq.3) then      ; multi-model mean maps + .mmm.html per group. Each .cvdp_mmm.nc is independent
+        system(envvar_str + " ls "+outdir+"*.cvdp_mmm.nc 2>/dev/null | " + \
+               "xargs -r -I{} -P "+max_num_tasks+" env MMM_ONEFILE={} "+ncl_exec+" "+zp+"multi_model_graphics.ncl")   ; (its figures/html carry the group name), so run one graphics process per file in parallel.
      end if
      if (mmm_webpages_only.eq."True") then   ; only the regenerated multi-model figures need finalizing; the other
         img_pattern = "mmm.*"                ; images were trimmed/watermarked by the original run
