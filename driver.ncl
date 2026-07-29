@@ -212,7 +212,12 @@
   end if     ; mmm_webpages_only
   if (runstyle.eq.3) then
      print("Computing multi-model ensemble statistics")
-     system(envvar_str + " "+ncl_exec+" "+zp+"multi_model_stats.ncl")
+     if (isfilepresent2("namelist_byvar/namelist_pairing")) then   ; experiment groups are independent (each writes its
+        system(envvar_str + " cut -d'|' -f2 namelist_byvar/namelist_pairing | sed 's/^ *//; s/ *$//' | sort -u | grep -v '^$' | " + \
+               "xargs -r -I{} -P "+max_num_tasks+" env MMM_GROUP={} "+ncl_exec+" "+zp+"multi_model_stats.ncl")  ; own output + weight files),
+     else                                                          ; so run one process per group in parallel (up to max_num_tasks).
+        system(envvar_str + " "+ncl_exec+" "+zp+"multi_model_stats.ncl")   ; no pairing namelist: let the script report and exit
+     end if
   end if
 ;--------------------------------------------
 ; Create webpages, finalize images and begin cleanup

@@ -11,7 +11,13 @@
 ;   - 2D rectilinear lat x lon fields          -> bilinear (linint2) to a 1x1 degree grid
 ;   - 2D curvilinear fields (sea ice, native
 ;     ocean grid zos etc, identified by their
-;     "coordinates" attribute)                 -> rcm2rgrid to the same 1x1 degree grid
+;     "coordinates" attribute)                 -> ESMF bilinear to the same 1x1 degree grid.
+;                                                 The ESMF weights depend only on the grid pair, so
+;                                                 they are generated once per (model,role,grid) and
+;                                                 cached in a weight file that all of that model's
+;                                                 fields on that grid reuse (rcm2rgrid, previously
+;                                                 used here, re-searched the grid for every field and
+;                                                 dominated the runtime: ~8 s/field vs ~0.04 s here).
 ;   - 2D lev x lat fields (AMOC)               -> linint2 to a 1 degree x 100 m grid
 ;   - 1D index/PC timeseries (dim time/TIME)   -> per-model temporal standard deviation
 ;                                                 (i.e. index amplitude), then cross-model
@@ -200,16 +206,59 @@ begin
   return(ret)
 end
 
+undef("mmm_wgtname")
+function mmm_wgtname(dir:string,tag:string,arr:numeric)
+; weight-file path for a curvilinear field, keyed on the caller's tag (group+model+role) and a
+; fingerprint of the source grid, so all of a model's fields on one grid share (and reuse) one
+; weight file, while different grids never collide. The fingerprint uses the dimension names plus
+; the grid shape plus the mean lat/lon: a model's NH (j,i) and SH (j2,i2) ice grids commonly have
+; the *same* shape (global tripolar grids) but different coordinates, and must not share weights.
+; Returns "" for rectilinear fields, which are regridded with linint2 and need no weight file.
+local dir,tag,arr,dm,dn,fp
+begin
+  if (arr@class.ne."map_curv") then
+     return("")
+  end if
+  dm = dimsizes(arr)
+  dn = getvardimnames(arr)
+  fp = toint(round((avg(arr@lat2d)+avg(arr@lon2d))*1000.,3))   ; distinguishes grids of equal shape/dim-names
+  return(dir+"mmm_wgt_"+tag+"_"+dn(0)+dn(1)+"_"+dm(0)+"x"+dm(1)+"_"+fp+".nc")
+end
+
 undef("mmm_regrid_map")
-function mmm_regrid_map(arr:numeric,LAT1[*]:numeric,LON1[*]:numeric)
-; regrid a map-class field (rectilinear or curvilinear) to the common lat x lon grid
-local arr,LAT1,LON1,ro
+function mmm_regrid_map(arr:numeric,LAT1[*]:numeric,LON1[*]:numeric,wgtfile:string)
+; regrid a map-class field to the common lat x lon grid. Rectilinear fields use linint2 (cheap).
+; Curvilinear fields use ESMF bilinear: the first field on a given grid generates and writes wgtfile
+; (masking out missing source cells), and every later field on that grid reuses the cached weights.
+local arr,LAT1,LON1,wgtfile,ro,Opt
 begin
   if (arr@class.eq."map_rect") then
      ro = linint2(arr&lon,arr&lat,arr,True,LON1,LAT1,0)
-  else
-     ro = rcm2rgrid(arr@lat2d,arr@lon2d,arr,LAT1,LON1,0)
+     return(ro)
   end if
+  if (isfilepresent2(wgtfile)) then                 ; cached: reuse the weights generated for this grid
+     Opt = True
+     Opt@NoPETLog = True
+     ro = ESMF_regrid_with_weights(arr,wgtfile,Opt)
+     return(ro)
+  end if
+  Opt = True                                        ; first field on this grid: generate + cache the weights
+  Opt@SrcGridLat    = arr@lat2d
+  Opt@SrcGridLon    = arr@lon2d
+  Opt@SrcMask2D     = where(ismissing(arr),0,1)     ; exclude land/missing source cells from the interpolation
+  Opt@SrcRegional   = False
+  Opt@DstGridType   = "rectilinear"
+  Opt@DstGridLat    = LAT1
+  Opt@DstGridLon    = LON1
+  Opt@InterpMethod  = "bilinear"
+  Opt@ForceOverwrite = True
+  Opt@SrcFileName   = wgtfile+".src.nc"             ; transient SCRIP descriptions, removed after generation
+  Opt@DstFileName   = wgtfile+".dst.nc"
+  Opt@WgtFileName   = wgtfile                        ; kept for reuse by the rest of this grid's fields
+  Opt@RemoveSrcFile = True
+  Opt@RemoveDstFile = True
+  Opt@NoPETLog      = True
+  ro = ESMF_regrid(arr,Opt)
   return(ro)
 end
 
@@ -369,6 +418,16 @@ begin
                    "pna_pattern","npo_pattern","pdv_pattern","ipo_pattern"/)   ; EOF-based patterns whose sign is arbitrary
 
   groups = get_unique_values(expgroup)
+  mmm_group = getenv("MMM_GROUP")                    ; optional: restrict to one experiment group so groups
+  if (.not.ismissing(mmm_group)) then                ; can be processed in parallel (one process per group,
+     if (mmm_group.ne."") then                       ; launched by driver.ncl). Each group writes its own
+        if (ismissing(ind(groups.eq.mmm_group))) then ; output and weight files, so parallel runs do not collide.
+           print("multi_model_stats.ncl: MMM_GROUP="+mmm_group+" is not an experiment group in namelist_pairing. Exiting.")
+           exit
+        end if
+        groups := (/mmm_group/)
+     end if
+  end if
   do gg = 0,dimsizes(groups)-1
      gind := ind(expgroup.eq.groups(gg))
      npair = dimsizes(gind)
@@ -580,8 +639,9 @@ begin
               if (.not.(ac@class.eq."map_rect".or.ac@class.eq."map_curv")) then
                  continue
               end if
-              re := mmm_regrid_map(ae,LAT1,LON1)
-              rc := mmm_regrid_map(ac,LAT1,LON1)
+              wtag := mmm_sanitize_name(groups(gg))+"_"+hh   ; weight files are keyed per group+model+role+grid
+              re := mmm_regrid_map(ae,LAT1,LON1,mmm_wgtname(OUTDIR,wtag+"_exp",ae))
+              rc := mmm_regrid_map(ac,LAT1,LON1,mmm_wgtname(OUTDIR,wtag+"_ctl",ac))
            else
               if (ae@class.ne."levlat".or.ac@class.ne."levlat") then
                  continue
@@ -622,6 +682,7 @@ begin
         nproc = nproc+1
      end do
      delete(z)
+     system("rm -f "+OUTDIR+"mmm_wgt_"+mmm_sanitize_name(groups(gg))+"_*")   ; discard this group's cached regrid weights
 
      print("multi_model_stats.ncl: "+groups(gg)+" minus "+CTL_GROUP+": wrote multi-model statistics for "+nproc+" fields from up to "+npair+" model pairs to "+ofile)
      if (nskip.ge.1) then
