@@ -79,21 +79,50 @@ begin
   return(arr)
 end
 
+undef("mmm_coarse_class")
+function mmm_coarse_class(f:file,vn:string)
+; Classify a field for stack allocation from metadata only (no data read): returns "ts", "map",
+; "levlat" or "none". The rectilinear/curvilinear map distinction and the all-missing check are
+; left to mmm_read_field, which reads the data anyway; this just says which stack a variable needs.
+local f,vn,dn,rank
+begin
+  if (.not.isfilevar(f,vn)) then
+     return("none")
+  end if
+  dn = getfilevardims(f,vn)
+  if (any(ismissing(dn))) then
+     return("none")
+  end if
+  rank = dimsizes(dn)
+  if (rank.eq.1) then
+     if (vn.eq.dn(0)) then                     ; coordinate variables (time, TIME, lat, ..) are not diagnostics
+        return("none")
+     end if
+     if (dn(0).ne."time".and.dn(0).ne."TIME") then
+        return("none")                         ; spectra (frequency) and other 1D arrays
+     end if
+     return("ts")
+  end if
+  if (rank.ne.2) then
+     return("none")
+  end if
+  if (dn(0).eq."lev") then                     ; lev x lat (AMOC)
+     return("levlat")
+  end if
+  return("map")                                ; rank-2 lat/lon or curvilinear map (non-map rank-2 fields,
+end                                            ; e.g. Hovmollers, are rejected later by mmm_read_field)
+
 undef("mmm_read_field")
-function mmm_read_field(fn:string,vn:string)
-; Read and classify a field from a cvdp_data master file. Returns the field with
+function mmm_read_field(f:file,vn:string)
+; Read and classify a field from an already-open cvdp_data master file. Returns the field with
 ; @valid = True and @class set to one of "map_rect", "map_curv", "levlat" or "ts"
 ; (standardized _FillValue, south-to-north/upward coordinates, 0:360 longitudes,
 ; 2D coordinates attached as @lat2d/@lon2d for the curvilinear class).
 ; Returns with @valid = False if the field is absent, all missing or none of the classes.
-local fn,vn,ret,f,dnames,rank,arr,is_curv,coordatt,lat2d,lon2d
+local f,vn,ret,dnames,rank,arr,is_curv,coordatt,lat2d,lon2d
 begin
   ret = 0
   ret@valid = False
-  if (.not.isfilepresent2(fn)) then
-     return(ret)
-  end if
-  f = addfile(fn,"r")
   if (.not.isfilevar(f,vn)) then
      return(ret)
   end if
@@ -437,29 +466,56 @@ begin
      end if
      expfile := OUTDIR+mmm_sanitize_name(expname(gind))+".cvdp_data."+expsyear(gind)+"-"+expeyear(gind)+".nc"
      ctlfile := OUTDIR+mmm_sanitize_name(ctlname(gind))+".cvdp_data."+ctlsyear(gind)+"-"+ctleyear(gind)+".nc"
+     exp_present := new(npair,logical)
+     ctl_present := new(npair,logical)
      do hh = 0,npair-1
-        if (.not.isfilepresent2(expfile(hh))) then
+        exp_present(hh) = isfilepresent2(expfile(hh))
+        ctl_present(hh) = isfilepresent2(ctlfile(hh))
+        if (.not.exp_present(hh)) then
            print("multi_model_stats.ncl: Warning: "+expfile(hh)+" not found. "+modelkey(gind(hh))+" will not contribute to the "+groups(gg)+" multi-model statistics.")
         end if
-        if (.not.isfilepresent2(ctlfile(hh))) then
+        if (.not.ctl_present(hh)) then
            print("multi_model_stats.ncl: Warning: "+ctlfile(hh)+" not found. "+modelkey(gind(hh))+" will not contribute to the "+groups(gg)+" multi-model statistics.")
         end if
      end do
      model_list = str_join(modelkey(gind),", ")
 
+     if (isvar("fexp")) then                    ; open each present master file exactly once for this group
+        delete(fexp)                            ; (mmm_read_field is called ~2*npair times per variable, so
+     end if                                     ; reopening per call would be thousands of opens per group)
+     if (isvar("fctl")) then
+        delete(fctl)
+     end if
+     exp_slot := new(npair,integer)             ; exp_slot(hh) = index of pair hh's file within fexp, or -1 if absent
+     exp_slot = -1                              ; (assign -1 rather than using it as _FillValue, so the value is
+     ctl_slot := new(npair,integer)             ;  a real -1 and the .lt.0 tests below never see a missing value)
+     ctl_slot = -1
+     pe := ind(exp_present)
+     pc := ind(ctl_present)
+     if (.not.all(ismissing(pe))) then
+        fexp = addfiles(expfile(pe),"r")
+        do kk = 0,dimsizes(pe)-1
+           exp_slot(pe(kk)) = kk
+        end do
+     end if
+     if (.not.all(ismissing(pc))) then
+        fctl = addfiles(ctlfile(pc),"r")
+        do kk = 0,dimsizes(pc)-1
+           ctl_slot(pc(kk)) = kk
+        end do
+     end if
+
      vnames_all := new(1,string)           ; union of variable names across all master files of this group
-     do hh = 0,npair-1
-        if (isfilepresent2(expfile(hh))) then
-           f = addfile(expfile(hh),"r")
-           vnames_all := array_append_record(vnames_all,getfilevarnames(f),0)
-           delete(f)
-        end if
-        if (isfilepresent2(ctlfile(hh))) then
-           f = addfile(ctlfile(hh),"r")
-           vnames_all := array_append_record(vnames_all,getfilevarnames(f),0)
-           delete(f)
-        end if
-     end do
+     if (.not.all(ismissing(pe))) then
+        do kk = 0,dimsizes(pe)-1
+           vnames_all := array_append_record(vnames_all,getfilevarnames(fexp[kk]),0)
+        end do
+     end if
+     if (.not.all(ismissing(pc))) then
+        do kk = 0,dimsizes(pc)-1
+           vnames_all := array_append_record(vnames_all,getfilevarnames(fctl[kk]),0)
+        end do
+     end if
      if (all(ismissing(vnames_all))) then
         print("multi_model_stats.ncl: No cvdp_data master files found for experiment group "+groups(gg)+". Skipping group.")
         continue
@@ -488,11 +544,13 @@ begin
            continue                        ; 2D coordinate helper variables, not diagnostics
         end if
 
-        vclass = "none"                    ; classify from the first valid experiment field
+        vclass = "none"                    ; classify (metadata only) from the first experiment file that has it
         do hh = 0,npair-1
-           at := mmm_read_field(expfile(hh),vn)
-           if (at@valid) then
-              vclass = at@class
+           if (exp_slot(hh).lt.0) then
+              continue
+           end if
+           vclass = mmm_coarse_class(fexp[exp_slot(hh)],vn)
+           if (vclass.ne."none") then
               break
            end if
         end do
@@ -500,9 +558,6 @@ begin
            skipped(nskip) = vn
            nskip = nskip+1
            continue
-        end if
-        if (vclass.eq."map_rect".or.vclass.eq."map_curv") then
-           vclass = "map"
         end if
 
 ;------- timeseries class: cross-model statistics of the index amplitude (temporal stddev)
@@ -513,14 +568,17 @@ begin
            vlong = vn
            got_meta = False
            do hh = 0,npair-1
-              ae := mmm_read_field(expfile(hh),vn)
+              if (exp_slot(hh).lt.0.or.ctl_slot(hh).lt.0) then
+                 continue
+              end if
+              ae := mmm_read_field(fexp[exp_slot(hh)],vn)
               if (.not.ae@valid) then
                  continue
               end if
               if (ae@class.ne."ts") then
                  continue
               end if
-              ac := mmm_read_field(ctlfile(hh),vn)
+              ac := mmm_read_field(fctl[ctl_slot(hh)],vn)
               if (.not.ac@valid) then
                  continue
               end if
@@ -624,11 +682,14 @@ begin
         vlong = vn
         got_meta = False
         do hh = 0,npair-1
-           ae := mmm_read_field(expfile(hh),vn)
+           if (exp_slot(hh).lt.0.or.ctl_slot(hh).lt.0) then
+              continue
+           end if
+           ae := mmm_read_field(fexp[exp_slot(hh)],vn)
            if (.not.ae@valid) then
               continue
            end if
-           ac := mmm_read_field(ctlfile(hh),vn)
+           ac := mmm_read_field(fctl[ctl_slot(hh)],vn)
            if (.not.ac@valid) then
               continue
            end if
