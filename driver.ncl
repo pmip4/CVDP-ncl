@@ -30,10 +30,14 @@
                                              ; multi-model statistics and figures and recreate the webpages from the diagnostics output of a previously
                                              ; completed runstyle 3 run in outdir. False = run the full package (Default).
    
-  namelists_only       = "False"             ; Set to True to only create the variable namelists. Useful upon running the package for the first time to 
+  namelists_only       = "False"             ; Set to True to only create the variable namelists. Useful upon running the package for the first time to
                                              ; verify that the correct files are being selected by the package. (See files in namelist_byvar/ directory)
-                                             ; Set to False to run the entire package. 
-                                             
+                                             ; Set to False to run the entire package.
+
+  reuse_namelists      = "False"             ; True = skip the (slow) namelist.ncl data-file scan and reuse the existing namelist_byvar/ files
+                                             ; IF they were generated from the current namelist/namelist_obs (verified by content fingerprint).
+                                             ; Speeds up reruns where only downstream settings changed; regenerates automatically if the namelist changed.
+
   create_graphics      = "True"              ; True = Create graphics from individual reference dataset/simulation metrics. Create ensemble mean metrics and netCDF files.  
                                              ; False = Calculate individual reference dataset/simulation metrics and exit. 
 
@@ -150,6 +154,7 @@
          "export ENSEMBLE_MEAN_DIR="+ensemble_mean_dir+";   export MONTHLY_MODES="+compute_monthly_modes+";   "+\
          "export OPT_CLIMO="+opt_climo+";   export CLIMO_SYEAR="+climo_syear+";   export CLIMO_EYEAR="+climo_eyear+";   "+\
          "export AMOC_30N="+amoc_30N+";   "+\
+         "export REUSE_NAMELISTS="+reuse_namelists+";   "+\
          "export MAX_TASKS="+max_num_tasks+";   export IM_COMMAND="+im+";"
   if (regrid_check.eq."True") then
      envvar_str = envvar_str+"   export REGRID_TO_RES="+regrid_to_res+";   export REGRID_DIR="+regrid_dir+";"

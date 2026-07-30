@@ -21,7 +21,40 @@ begin
   if (.not.isfilepresent2("namelist_byvar/")) then
      system("mkdir namelist_byvar")
   end if
-  
+
+;-- Optional shortcut (REUSE_NAMELISTS=True): skip the slow data-file scan and reuse the existing
+;   namelist_byvar/ files if they were generated from the current namelist/namelist_obs. Validity is
+;   a content fingerprint (md5 of namelist [+ namelist_obs], plus runstyle/obs) stored when the files
+;   were last written, so any change to the namelist regenerates them automatically. namelist_aice_sh
+;   is the last file namelist.ncl writes, so its presence confirms a previous run completed.
+  cfiles = "namelist"
+  if (obsflag) then
+     cfiles = cfiles+" namelist_obs"
+  end if
+  cur_fp := systemfunc("bash -c 'cat "+cfiles+" 2> /dev/null | md5sum | cut -c1-32'")
+  cur_fp := cur_fp(0)+"-rs"+runstyle+"-obs"+o
+  reuse = getenv("REUSE_NAMELISTS")
+  if (.not.ismissing(reuse)) then
+  if (reuse.eq."True") then
+     have_outputs = isfilepresent2("namelist_byvar/namelist_aice_sh")
+     if (runstyle.eq.3) then
+        have_outputs = have_outputs.and.isfilepresent2("namelist_byvar/namelist_pairing")
+     end if
+     if (have_outputs.and.isfilepresent2("namelist_byvar/.namelist_fingerprint")) then
+        stored_fp := asciiread("namelist_byvar/.namelist_fingerprint",-1,"string")
+        if (stored_fp(0).eq.cur_fp) then
+           print("namelist.ncl: REUSE_NAMELISTS=True and namelist_byvar/ matches the current namelist (fingerprint "+cur_fp+"); reusing existing per-variable namelists and skipping the data-file scan.")
+           print("Finished: namelist.ncl")
+           exit
+        else
+           print("namelist.ncl: REUSE_NAMELISTS=True but the namelist/namelist_obs/runstyle has changed since namelist_byvar/ was built; regenerating.")
+        end if
+     else
+        print("namelist.ncl: REUSE_NAMELISTS=True but no complete, fingerprinted namelist_byvar/ was found; generating it now.")
+     end if
+  end if
+  end if
+
   nsim = numAsciiRow("namelist")
   na = asciiread("namelist",(/nsim/),"string")
   
@@ -911,10 +944,11 @@ begin
         end if
      end do
   end do    
-  asciiwrite("namelist_byvar/namelist_aice_sh",namelist_aice_sh) 
+  asciiwrite("namelist_byvar/namelist_aice_sh",namelist_aice_sh)
 ;----------------------------------------------------------------------------
   if (obsflag) then
      delete([/vnamesB,namesB,pathsB,syearB,eyearB/])
   end if
+  asciiwrite("namelist_byvar/.namelist_fingerprint",cur_fp)   ; records the namelist this namelist_byvar/ was built from, for REUSE_NAMELISTS
   print("Finished: namelist.ncl")
 end
