@@ -283,9 +283,21 @@ begin
   end if
   delete(mocheck)
 
-  if (farr&lon(0).lt.0) then
-     farr = lonFlip(farr)     ; lon flip
-  end if     
+  if (farr&lon(0).lt.-180.or.max(farr&lon).gt.360) then   ; e.g. MOM ocean grids (-280 to 80E): wrap into 0-360E and re-sort
+     lonw = farr&lon
+     lonw = where(lonw.lt.0,lonw+360,lonw)
+     lonw = where(lonw.ge.360,lonw-360,lonw)
+     ip = dim_pqsort(lonw,2)
+     tarr = farr(:,:,ip)
+     tarr&lon = lonw
+     delete(farr)
+     farr = tarr
+     delete([/tarr,lonw,ip/])
+  else
+     if (farr&lon(0).lt.0) then
+        farr = lonFlip(farr)     ; lon flip
+     end if
+  end if
   if (min(farr&lon).lt.0.or.max(farr&lon).gt.360) then
      print(farr&lon)
      print("Fatal: Longitudes in "+zpath+" not in expected 0-360E range, creating blank array")
